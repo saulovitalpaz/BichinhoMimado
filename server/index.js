@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path'); // Added for static serving
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
@@ -234,88 +235,114 @@ app.delete('/api/bills/:id', async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body; // Passed for Audit
 
-    // Soft Delete
-    await prisma.bill.update({
-        where: { id: parseInt(id) },
-        data: { deletedAt: new Date() }
-    });
+    try {
+        const billId = parseInt(id);
 
-    if (userId) createAuditLog(userId, 'Bill', parseInt(id), 'SOFT_DELETE', null, req.ip, req.headers['user-agent']);
+        // 1. Find items associated with this bill that reduced stock
+        const bill = await prisma.bill.findUnique({
+            where: { id: billId },
+            include: { items: true }
+        });
 
-    res.json({ success: true });
+        if (bill) {
+            // 2. Reverse Stock
+            for (const item of bill.items) {
+                if (item.category === 'CLINICAL' && item.description && item.amount > 0) {
+                    // Try to find product by name match (since we didn't store productId in InvoiceItem initially, though we should have)
+                    // Hardening: Future-proof by assuming description matches product name
+                    const product = await prisma.product.findFirst({ where: { name: item.description } });
+                    if (product) {
+                        await prisma.product.update({
+                            where: { id: product.id },
+                            data: { stock: { increment: item.quantity || 1 } }
+                        });
+                    }
+                }
+            }
+        }
+
+        // Soft Delete
+        await prisma.bill.update({
+            where: { id: billId },
+            data: { deletedAt: new Date() }
+        });
+
+        if (userId) createAuditLog(userId, 'Bill', billId, 'SOFT_DELETE', null, req.ip, req.headers['user-agent']);
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to delete bill' });
+    }
 });
 
 // === Global Search ===
 app.get('/api/search', async (req, res) => {
     const { q } = req.query;
-    if (!q) return res.json([]);
+    if (!q || q.length < 2) return res.json([]);
 
-    const query = q.toLowerCase();
-    const results = [];
+    const query = q.toString();
 
     try {
-        // Search Pets
-        const pets = await prisma.pet.findMany({
-            where: {
-                OR: [
-                    { name: { contains: query, mode: 'insensitive' } },
-                    { tutor: { name: { contains: query, mode: 'insensitive' } } }
-                ]
-            },
-            include: { tutor: true },
-            take: 5
-        });
-        pets.forEach(pet => {
-            results.push({
+        const [pets, tutors, bills] = await Promise.all([
+            prisma.pet.findMany({
+                where: {
+                    OR: [
+                        { name: { contains: query } },
+                        { tutor: { name: { contains: query } } }
+                    ],
+                    deletedAt: null
+                },
+                select: { id: true, name: true, tutor: { select: { name: true } } },
+                take: 5
+            }),
+            prisma.tutor.findMany({
+                where: {
+                    OR: [
+                        { name: { contains: query } },
+                        { cpf: { contains: query } }
+                    ],
+                    deletedAt: null
+                },
+                select: { id: true, name: true, cpf: true },
+                take: 5
+            }),
+            prisma.bill.findMany({
+                where: {
+                    OR: [
+                        { description: { contains: query } },
+                        // Only search ID if query is numeric to prevent DB casting errors
+                        ...(!isNaN(parseInt(query)) ? [{ id: parseInt(query) }] : [])
+                    ],
+                    deletedAt: null
+                },
+                select: { id: true, description: true, amount: true, status: true },
+                take: 5
+            })
+        ]);
+
+        const results = [
+            ...pets.map(p => ({
                 type: 'pet',
-                id: pet.id,
-                title: pet.name,
-                subtitle: `${pet.species} • Tutor: ${pet.tutor.name}`
-            });
-        });
-
-        // Search Tutors
-        const tutors = await prisma.tutor.findMany({
-            where: {
-                OR: [
-                    { name: { contains: query, mode: 'insensitive' } },
-                    { cpf: { contains: query, mode: 'insensitive' } },
-                    { phone: { contains: query, mode: 'insensitive' } }
-                ]
-            },
-            take: 5
-        });
-        tutors.forEach(tutor => {
-            results.push({
+                id: p.id,
+                title: p.name,
+                subtitle: `Tutor: ${p.tutor?.name}`
+            })),
+            ...tutors.map(t => ({
                 type: 'tutor',
-                id: tutor.id,
-                title: tutor.name,
-                subtitle: tutor.cpf || tutor.phone || 'Cliente'
-            });
-        });
-
-        // Search Bills
-        const bills = await prisma.bill.findMany({
-            where: {
-                deletedAt: null,
-                OR: [
-                    { description: { contains: query, mode: 'insensitive' } },
-                    { id: isNaN(parseInt(query)) ? undefined : parseInt(query) }
-                ]
-            },
-            include: { tutor: true },
-            take: 5
-        });
-        bills.forEach(bill => {
-            results.push({
+                id: t.id,
+                title: t.name,
+                subtitle: `CPF: ${t.cpf}`
+            })),
+            ...bills.map(b => ({
                 type: 'bill',
-                id: bill.id,
-                title: `Conta #${bill.id}`,
-                subtitle: `R$ ${bill.amount.toFixed(2)} • ${bill.tutor?.name || 'N/A'}`
-            });
-        });
+                id: b.id,
+                title: `Fatura #${b.id}`,
+                subtitle: `${b.description} - R$ ${b.amount} (${b.status})`
+            }))
+        ];
 
-        res.json(results.slice(0, 10));
+        res.json(results);
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Search failed' });
@@ -325,16 +352,32 @@ app.get('/api/search', async (req, res) => {
 // === Pet Timeline ===
 app.get('/api/pets/:id/timeline', async (req, res) => {
     const { id } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
 
     try {
         const petId = parseInt(id);
 
         const [appointments, records, invoices] = await Promise.all([
-            prisma.appointment.findMany({ where: { petId }, orderBy: { date: 'desc' } }),
-            prisma.medicalRecord.findMany({ where: { petId, deletedAt: null }, orderBy: { date: 'desc' } }),
+            prisma.appointment.findMany({
+                where: { petId },
+                take: limit,
+                skip: offset,
+                orderBy: { date: 'desc' },
+                select: { id: true, date: true, type: true, service: true, status: true }
+            }),
+            prisma.medicalRecord.findMany({
+                where: { petId, deletedAt: null },
+                take: limit,
+                skip: offset,
+                orderBy: { date: 'desc' },
+                select: { id: true, date: true, chiefComplaint: true, status: true } // Excludes heavy soapData
+            }),
             prisma.invoiceItem.findMany({
                 where: { petId },
-                include: { bill: true },
+                include: { bill: { select: { status: true } } },
+                take: limit,
+                skip: offset,
                 orderBy: { createdAt: 'desc' }
             })
         ]);
@@ -362,9 +405,12 @@ app.get('/api/pets/:id/timeline', async (req, res) => {
                 type: 'INVOICE',
                 title: i.category === 'PETSHOP' ? 'Consumo Petshop' : 'Consumo Clínico',
                 subtitle: i.description,
-                amount: i.amount
+                amount: i.amount,
+                status: i.bill?.status
             }))
-        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        ]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, limit); // Ensure overall limit after merge
 
         res.json(timeline);
     } catch (e) {
@@ -376,6 +422,16 @@ app.get('/api/pets/:id/timeline', async (req, res) => {
 // === Core Data ===
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// === Production Static Serving ===
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, '../web/dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../web/dist/index.html'));
 });
 
 app.listen(PORT, () => {

@@ -13,14 +13,7 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
-
-interface Appointment {
-    id: number;
-    pet: { name: string };
-    service: string;
-    petshopStatus?: string;
-    taxiDog?: boolean;
-}
+import { Appointment } from '../types/shared';
 
 const Petshop = () => {
     const [viewMode, setViewMode] = useState('kanban');

@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "install:all": "npm install --prefix web && npm install --prefix server",
+    "postinstall": "npm run install:all",
     "dev:web": "npm run dev --prefix web",
     "dev:server": "node server/index.js",
-    "dev": "echo 'Iniciando Frontend e Backend... (Use Ctrl+C para parar)' && start npm run dev:web && npm run dev:server"
+    "dev": "echo 'Iniciando Frontend e Backend... (Use Ctrl+C para parar)' && start npm run dev:web && npm run dev:server",
+    "build": "npm run build --prefix web",
+    "start": "node server/index.js"
   },
   "dependencies": {}
 }

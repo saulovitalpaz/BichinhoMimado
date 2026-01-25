@@ -342,6 +342,17 @@ const Clinical = () => {
                                     />
                                 </div>
                             </div>
+
+                            {/* Prescription Helper with Stock Indicator */}
+                            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Prescrição & Estoque</h4>
+                                <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-2xl">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                        <span className="w-2 h-2 inline-block rounded-full bg-emerald-500 mr-2"></span>
+                                        Catálogo de Produtos em Breve
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         <footer className="px-10 py-8 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between">

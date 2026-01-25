@@ -1,0 +1,65 @@
+{
+  "project_title": "Bichinho Mimado - Medical-Financial Veterinary Portal",
+  "implementation_checkup": {
+    "status": "Ready for Local Deployment",
+    "architecture_target": "Modular TypeScript-based Monorepo",
+    "security_level": "Professional/Clinical Grade"
+  },
+  "executive_summary_for_antigravity": {
+    "core_stack": {
+      "language": "TypeScript (strict mode)",
+      "frontend": "React with Tailwind CSS + Lucide Icons",
+      "state_management": "React Context API or TanStack Query",
+      "date_library": "Day.js + FullCalendar",
+      "validation": "Zod (Frontend/Backend contract)",
+      "database_local": "SQLite via Prisma ORM (Recommended for local dev) or PostgreSQL"
+    },
+    "professional_modules_advanced": [
+      {
+        "module": "Inventory-Service Linkage",
+        "detail": "Automatic stock depletion when a medical record prescribes a 'medicine' or 'shampoo' during consultation."
+      },
+      {
+        "module": "Real-time Dashboard (Status)",
+        "detail": "Use of Polling or WebSockets to track patient flow (Waiting -> Consult -> Lab -> Cashier)."
+      },
+      {
+        "module": "Secure Document Management",
+        "detail": "Implementation of local file storage for X-Rays and Lab Results tied to PetID."
+      }
+    ],
+    "database_schema_blueprint": {
+      "users": "id, email, password_hash, role (admin/vet/receptionist), logs[]",
+      "clients": "id, name, cpf (encrypted), phone, address, lgpd_consent (boolean)",
+      "pets": "id, name, species, breed, owner_id (FK), birth_date, weight_history[]",
+      "appointments": "id, pet_id (FK), vet_id (FK), start_time, end_time, status (pending/cancelled/completed)",
+      "medical_records": "id, pet_id (FK), appointment_id (FK), soap_json, prescriptions[], status (open/closed)",
+      "financial_transactions": "id, record_id (FK), owner_id (FK), total_amount, payment_method, is_paid, audit_trail"
+    },
+    "security_and_deployment_instructions": {
+      "step_1_sanitization": "Wrap all user inputs in a sanitize function (DOMPurify) before persisting to DB.",
+      "step_2_authentication": "Implement JWT logic for session management with a 30-min expiration.",
+      "step_3_audit": "Ensure every 'Update' or 'Delete' action creates a record in an 'Audit_Logs' table containing [Timestamp, UserID, Action, OldValue, NewValue].",
+      "step_4_finance_isolation": "Sensitive totals must never be rendered on the 'Reception' screen without an active toggle (EyeIcon/Blur) to prevent shoulder-surfing leaks.",
+      "step_5_connectivity": "Initialize Prisma Client or a REST API layer (Node/Express) to bridge React components to the local Database."
+    },
+    "component_logic_priority": [
+      {
+        "id": "1",
+        "feature": "Integrated Calendar",
+        "action": "Sync Appointments table with FullCalendar UI; allow drag-and-drop to reschedule with DB update."
+      },
+      {
+        "id": "2",
+        "feature": "SOAP Entry System",
+        "action": "A step-by-step form for Vets; finalizing this form auto-generates a pending 'ServiceCharge' in the Finance module."
+      },
+      {
+        "id": "3",
+        "feature": "Cashier Interface",
+        "action": "A table filterable by OwnerID/PetID showing all 'Unpaid' service charges with a 'Finalize' button."
+      }
+    ],
+    "final_deployment_instruction": "Antigravity: Initiate by refactoring current JS files to .tsx. Establish the /server folder with a basic API and /web with the discussed architecture. Focus first on Pet-Owner-Appointment relationships (The Core)."
+  }
+}

@@ -10,17 +10,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Tutor {
+// User (System Users: Admin, Vet, Receptionist)
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   // 'admin', 'veterinarian', 'receptionist'
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  auditLogs    AuditLog[]
+}
+
+// Audit Log for tracking all changes
+model AuditLog {
   id        Int      @id @default(autoincrement())
-  name      String
-  cpf       String?
-  email     String?
-  phone     String?
-  address   String?
-  patients  Pet[]
-  bills     Bill[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  table     String
+  recordId  Int
+  action    String   // 'CREATE', 'UPDATE', 'DELETE', 'SOFT_DELETE'
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  changes   String?  // JSON string of changes
+  timestamp DateTime @default(now())
+}
+
+// Tutor (Client)
+model Tutor {
+  id          Int      @id @default(autoincrement())
+  name        String
+  cpf         String?
+  email       String?
+  phone       String?
+  address     String?
+  lgpdConsent Boolean  @default(false)
+  patients    Pet[]
+  bills       Bill[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Pet {
@@ -42,24 +68,26 @@ model Pet {
 }
 
 model MedicalRecord {
-  id            Int            @id @default(autoincrement())
-  date          DateTime       @default(now())
-  petId         Int
-  pet           Pet            @relation(fields: [petId], references: [id])
-  veterinarian  String?        // Name of the vet
-  chiefComplaint String?       // Queixa principal
+  id             Int            @id @default(autoincrement())
+  date           DateTime       @default(now())
+  petId          Int
+  pet            Pet            @relation(fields: [petId], references: [id])
+  veterinarian   String?        // Name of the vet
+  chiefComplaint String?        // Queixa principal
   
-  // JSON fields for flexible structure (SimplesVet style)
-  triagemData   String?        // JSON: { weight, temp, heartRate, respRate, hydration, mucosae }
-  anamnesisData String?        // JSON: { digestive: "normal", respiratory: "cough", etc. }
-  physicalExam  String?        // JSON: { bodyMapPoints: [{x, y, note}], systems: {} }
-  diagnosis     String?        // Text or JSON with CID codes
-  treatment     String?        // Text plan
+  // SOAP Structure (JSON or distinct fields)
+  soapData       String?        // JSON: { subjective, objective, assessment, plan }
   
-  prescriptions Prescription[]
-  status        String         @default("Open") // Open, Finalized
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  // Specific fields if needed outside JSON
+  diagnosis      String?        // Text or JSON with CID codes
+  treatment      String?        // Text plan
+  
+  prescriptions  Prescription[]
+  status         String         @default("Open") // Open, Finalized
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?      // Soft Delete
 }
 
 model Prescription {
@@ -110,28 +138,55 @@ model Product {
 }
 
 model Bill {
-  id          Int      @id @default(autoincrement())
-  description String?
-  amount      Float
-  dueDate     DateTime
-  paidDate    DateTime?
+  id            Int      @id @default(autoincrement())
+  description   String?
+  amount        Float
+  dueDate       DateTime
+  paidDate      DateTime?
   paymentMethod String? // Credit, Debit, Cash, Pix
-  type        String   @default("Receivable") // Receivable (Receita), Payable (Despesa)
-  status      String   // Paid, Pending, Overdue
+  type          String   @default("Receivable") // Receivable (Receita), Payable (Despesa)
+  status        String   // Paid, Pending, Overdue
   
-  tutorId     Int?
-  tutor       Tutor?   @relation(fields: [tutorId], references: [id])
+  tutorId       Int?
+  tutor         Tutor?   @relation(fields: [tutorId], references: [id])
   
-  category    String?  // 'Clinical', 'Petshop', 'Retail', 'Operational'
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  category      String?  // 'Clinical', 'Petshop', 'Retail', 'Operational'
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime? // Soft Delete
 }
 
 model DailyCashFlow {
-  id            Int      @id @default(autoincrement())
-  date          DateTime @unique @default(now()) // Only one per day ideally, or handle by shifts
+  id             Int      @id @default(autoincrement())
+  date           DateTime @unique @default(now()) // Only one per day ideally, or handle by shifts
   openingBalance Float
   closingBalance Float?
-  status        String   @default("Open") // Open, Closed
-  notes         String?
+  status         DailyCashFlowStatus @default(OPEN)
+  notes          String?
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  REFUNDED
+  OVERDUE
+}
+
+enum Role {
+  ADMIN
+  VETERINARIAN
+  RECEPTIONIST
+}
+
+enum DailyCashFlowStatus {
+  OPEN
+  CLOSED
 }

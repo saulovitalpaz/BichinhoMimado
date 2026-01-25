@@ -5,43 +5,51 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('🌱 Starting seed...');
 
+    // 0. Create Users
+    console.log('👥 Creating users...');
+    await prisma.user.createMany({
+        data: [
+            { name: 'Administrador', email: 'admin@mimado.com', passwordHash: 'admin123', role: 'ADMIN' },
+            { name: 'Dr. Veterinário', email: 'vet@mimado.com', passwordHash: 'vet123', role: 'VETERINARIAN' },
+            { name: 'Recepção', email: 'recepcao@mimado.com', passwordHash: 'recep123', role: 'RECEPTIONIST' }
+        ]
+    });
+
     // 1. Create Tutors and Pets
+    console.log('🐾 Creating tutors and pets...');
     const tutors = [
         {
             name: 'Maria Silva',
             email: 'maria@email.com',
             phone: '11999999999',
             address: 'Rua das Flores, 123',
-            pets: [
-                { name: 'Rex', species: 'Cão', breed: 'Golden Retriever', gender: 'M', weight: 32.5, tags: '#Cardiopatia,#Vacinacao' },
-                { name: 'Mel', species: 'Cão', breed: 'Poodle', gender: 'F', weight: 6.2, tags: '#Alergia' }
-            ]
+            lgpdConsent: true,
+            patients: {
+                create: [
+                    { name: 'Rex', species: 'Cão', breed: 'Golden Retriever', gender: 'M', weight: 32.5, tags: '#Cardiopatia,#Vacinacao' },
+                    { name: 'Mel', species: 'Cão', breed: 'Poodle', gender: 'F', weight: 6.2, tags: '#Alergia' }
+                ]
+            }
         },
         {
             name: 'João Pereira',
             email: 'joao@email.com',
             phone: '11888888888',
-            pets: [
-                { name: 'Luna', species: 'Gato', breed: 'Persa', gender: 'F', weight: 4.1 }
-            ]
+            lgpdConsent: true,
+            patients: {
+                create: [
+                    { name: 'Luna', species: 'Gato', breed: 'Persa', gender: 'F', weight: 4.1 }
+                ]
+            }
         }
     ];
 
     for (const t of tutors) {
-        await prisma.tutor.create({
-            data: {
-                name: t.name,
-                email: t.email,
-                phone: t.phone,
-                address: t.address,
-                patients: {
-                    create: t.pets
-                }
-            }
-        });
+        await prisma.tutor.create({ data: t });
     }
 
     // 2. Create Products (Inventory)
+    console.log('📦 Creating products...');
     const products = [
         { name: 'Vacina V10', category: 'Medications', salePrice: 85.0, stock: 3, minStock: 10, sku: 'VAC-001' },
         { name: 'Simparic 20kg', category: 'Medications', salePrice: 120.0, stock: 15, minStock: 5, sku: 'SIM-020' },
@@ -58,11 +66,11 @@ async function main() {
         data: {
             date: new Date(),
             openingBalance: 250.00,
-            status: 'Open'
+            status: 'OPEN'
         }
     });
 
-    // 4. Create Appointments (Kanban Petshop)
+    // 4. Create Appointments
     const rex = await prisma.pet.findFirst({ where: { name: 'Rex' } });
     const mel = await prisma.pet.findFirst({ where: { name: 'Mel' } });
 
@@ -72,7 +80,7 @@ async function main() {
                 date: new Date(),
                 type: 'Petshop',
                 service: 'Banho + Tosa',
-                status: 'InProgress',
+                status: 'IN_PROGRESS',
                 petshopStatus: 'Secagem',
                 groomer: 'Ana',
                 petId: rex.id,
@@ -85,13 +93,11 @@ async function main() {
         await prisma.appointment.create({
             data: {
                 date: new Date(),
-                type: 'Petshop',
-                service: 'Banho',
-                status: 'InProgress',
-                petshopStatus: 'Banho',
-                groomer: 'Carlos',
+                type: 'Clinical',
+                service: 'Consulta',
+                status: 'SCHEDULED',
                 petId: mel.id,
-                price: 60.0
+                price: 150.0
             }
         });
     }

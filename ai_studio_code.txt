@@ -1,0 +1,44 @@
+[
+  {
+    "status": "Checkup Concluído",
+    "evaluation": "O plano do Antigravity é sólido para uma fundação técnica, mas precisa de 'camadas de maturidade' para se tornar um sistema profissional de nível hospitalar. Abaixo, elenco as adições críticas que você deve solicitar antes que ele inicie o deploy das rotas.",
+    "suggested_additions": [
+      {
+        "module": "Backend - Integridade Clínica",
+        "description": "Adicionar o padrão SOAP à tabela de MedicalRecords no Prisma.",
+        "action": "Solicitar que o campo 'soap_data' seja do tipo JSON ou tenha colunas específicas (Subjective, Objective, Assessment, Plan) para garantir que o veterinário siga o protocolo médico correto."
+      },
+      {
+        "module": "Backend - Segurança Legislativa",
+        "description": "Criptografia e Soft-Delete.",
+        "action": "Garantir que os dados sensíveis (CPF) usem criptografia de campo no banco de dados e que as tabelas de Prontuário e Transação tenham 'deletedAt' para nunca apagar dados de auditoria, apenas ocultá-los."
+      },
+      {
+        "module": "Frontend - Camada de Segurança Reativa",
+        "description": "Implementar Hooks de Segurança no Frontend.",
+        "action": "Instruir o Antigravity a criar um hook 'useSecuritySession' que gerencie o 'Idle Timeout' (bloqueio por inatividade de 10 min) e o 'PrivacyMode' (blur automático em valores financeiros)."
+      },
+      {
+        "module": "Fluxo de Negócio - Ponte Médica-Financeira",
+        "description": "Trigger de Faturamento Automático.",
+        "action": "Definir que o encerramento de um 'MedicalRecord' dispare uma mutação que cria automaticamente uma 'FinancialTransaction' pendente. Isso evita que a recepção esqueça de cobrar o serviço."
+      },
+      {
+        "module": "Database - Validação Estrita",
+        "description": "Uso de Enums em vez de Strings.",
+        "action": "Utilizar 'enum' do Prisma para Status de Agendamento (SCHEDULED, IN_PROGRESS, COMPLETED, CANCELED) e de Transação (PENDING, PAID, REFUNDED) para evitar lixo no banco."
+      }
+    ],
+    "priority_corrections": [
+      {
+        "issue": "Separação de Identidade",
+        "correction": "Garantir que 'User' (sistema) e 'Tutor/Client' (externo) sejam tabelas separadas. O tutor nunca faz login nesta versão, apenas os funcionários (Vet, Recepção, Admin)."
+      },
+      {
+        "issue": "Prisma & Local DB",
+        "correction": "Solicitar a configuração do arquivo '.env' e do Provider para SQLite, facilitando o deploy local imediato sem necessidade de servidor de banco de dados externo agora."
+      }
+    ],
+    "final_prompt_to_antigravity": "Antigravity, refine o plano com estas diretrizes: 1. Adicione enums de status rigorosos no schema. 2. Implemente Soft-Delete em registros médicos. 3. No frontend, adicione o Hook de monitoramento de inatividade e o modo de privacidade para a recepção. 4. Vincule a criação de cobrança ao encerramento do prontuário médico."
+  }
+]

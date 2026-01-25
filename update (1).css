@@ -1,0 +1,12 @@
+/* src/styles/variables.css */
+:root {
+  --primary: #2D6A4F; /* Verde médico/confiança */
+  --secondary: #1B4332;
+  --accent: #52B788;
+  --danger: #E63946; /* Para débitos/financeiro negativo */
+  --success: #2A9D8F; /* Para faturamento/saúde */
+  --bg-app: #F8FAFC;
+  --surface: #FFFFFF;
+  --text-main: #1E293B;
+  --border: #E2E8F0;
+}

@@ -1,0 +1,12 @@
+{
+  "name": "bichinho-mimado",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix web && npm install --prefix server",
+    "dev:web": "npm run dev --prefix web",
+    "dev:server": "node server/index.js",
+    "dev": "echo 'Iniciando Frontend e Backend... (Use Ctrl+C para parar)' && start npm run dev:web && npm run dev:server"
+  },
+  "dependencies": {}
+}

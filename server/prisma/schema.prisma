@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tutor {
+  id        Int      @id @default(autoincrement())
+  name      String
+  cpf       String?
+  email     String?
+  phone     String?
+  address   String?
+  patients  Pet[]
+  bills     Bill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pet {
+  id             Int             @id @default(autoincrement())
+  name           String
+  species        String
+  breed          String?
+  gender         String?         // 'M' or 'F'
+  weight         Float?
+  birthDate      DateTime?
+  microchip      String?
+  tags           String?
+  tutorId        Int
+  tutor          Tutor           @relation(fields: [tutorId], references: [id])
+  medicalRecords MedicalRecord[]
+  appointments   Appointment[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model MedicalRecord {
+  id            Int            @id @default(autoincrement())
+  date          DateTime       @default(now())
+  petId         Int
+  pet           Pet            @relation(fields: [petId], references: [id])
+  veterinarian  String?        // Name of the vet
+  chiefComplaint String?       // Queixa principal
+  
+  // JSON fields for flexible structure (SimplesVet style)
+  triagemData   String?        // JSON: { weight, temp, heartRate, respRate, hydration, mucosae }
+  anamnesisData String?        // JSON: { digestive: "normal", respiratory: "cough", etc. }
+  physicalExam  String?        // JSON: { bodyMapPoints: [{x, y, note}], systems: {} }
+  diagnosis     String?        // Text or JSON with CID codes
+  treatment     String?        // Text plan
+  
+  prescriptions Prescription[]
+  status        String         @default("Open") // Open, Finalized
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Prescription {
+  id              Int           @id @default(autoincrement())
+  medicalRecordId Int
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  productId       Int?
+  product         Product?      @relation(fields: [productId], references: [id])
+  medicationName  String        // If not in stock/product list
+  dosage          String
+  frequency       String
+  duration        String
+  notes           String?
+}
+
+model Appointment {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  type      String   // Clinical, Petshop
+  service   String?  // 'Banho', 'Tosa', 'Consulta'
+  status    String   // Scheduled, CheckedIn, InProgress, Completed, Canceled
+  
+  // Petshop specific workflow
+  petshopStatus String? // 'Aguardando', 'Banho', 'Secagem', 'Tosa', 'Finalizacao', 'Pronto'
+  groomer       String? // Profissional responsável
+
+  petId     Int
+  pet       Pet      @relation(fields: [petId], references: [id])
+  price     Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id            Int            @id @default(autoincrement())
+  name          String
+  description   String?
+  sku           String?        @unique
+  category      String?        // Medications, Petshop, Food
+  stock         Int            @default(0)
+  minStock      Int            @default(5)
+  costPrice     Float?
+  salePrice     Float
+  expiry        DateTime?
+  prescriptions Prescription[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Bill {
+  id          Int      @id @default(autoincrement())
+  description String?
+  amount      Float
+  dueDate     DateTime
+  paidDate    DateTime?
+  paymentMethod String? // Credit, Debit, Cash, Pix
+  type        String   @default("Receivable") // Receivable (Receita), Payable (Despesa)
+  status      String   // Paid, Pending, Overdue
+  
+  tutorId     Int?
+  tutor       Tutor?   @relation(fields: [tutorId], references: [id])
+  
+  category    String?  // 'Clinical', 'Petshop', 'Retail', 'Operational'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DailyCashFlow {
+  id            Int      @id @default(autoincrement())
+  date          DateTime @unique @default(now()) // Only one per day ideally, or handle by shifts
+  openingBalance Float
+  closingBalance Float?
+  status        String   @default("Open") // Open, Closed
+  notes         String?
+}

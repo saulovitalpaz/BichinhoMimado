@@ -9,11 +9,11 @@ async function main() {
     console.log('👥 Creating users...');
     await prisma.user.createMany({
         data: [
-            { name: 'Maressa', email: 'maressa@mimado.com', passwordHash: '12345', role: 'admin_business' },
-            { name: 'Giovana', email: 'giovana@mimado.com', passwordHash: '12345', role: 'admin_vet' },
-            { name: 'Veterinario', email: 'vet@mimado.com', passwordHash: '12345', role: 'vet' },
-            { name: 'Recepção Petshop', email: 'petshop@mimado.com', passwordHash: '12345', role: 'receptionist' },
-            { name: 'Recepção clínica', email: 'clinica@mimado.com', passwordHash: '12345', role: 'receptionist' }
+            { name: 'Maressa', email: 'maressa@bichinhomimado.com.br', passwordHash: '12345', role: 'admin_vet' },
+            { name: 'Giovana', email: 'giovana@bichinhomimado.com.br', passwordHash: '12345', role: 'admin_business' },
+            { name: 'Veterinario', email: 'vet@bichinhomimado.com.br', passwordHash: '12345', role: 'vet' },
+            { name: 'Recepção Petshop', email: 'petshop@bichinhomimado.com.br', passwordHash: '12345', role: 'receptionist' },
+            { name: 'Recepção clínica', email: 'clinica@bichinhomimado.com.br', passwordHash: '12345', role: 'receptionist' }
         ]
     });
 

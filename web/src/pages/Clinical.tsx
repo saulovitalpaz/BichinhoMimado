@@ -18,8 +18,10 @@ import {
     Download,
     Trash2,
     User,
-    Activity
+    Activity,
+    X
 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface Pet {
     id: number;
@@ -37,11 +39,44 @@ const Clinical = () => {
     const [activeTab, setActiveTab] = useState('history');
     const [showWizard, setShowWizard] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Form state for Auto-save
+    const [form, setForm] = useState({
+        chiefComplaint: '',
+        subjective: '',
+        objective: '',
+        assessment: '',
+        plan: '',
+        diagnosis: '',
+        treatment: '',
+        prescriptions: [] as any[]
+    });
+
+    // Load from LocalStorage on mount or pet selection
+    useEffect(() => {
+        if (selectedPet && showWizard) {
+            const saved = localStorage.getItem(`draft_record_${selectedPet.id}`);
+            if (saved) {
+                setForm(JSON.parse(saved));
+            }
+        }
+    }, [selectedPet, showWizard]);
+
+    // Auto-save logic (Debounced)
+    useEffect(() => {
+        if (selectedPet && showWizard) {
+            const timeout = setTimeout(() => {
+                localStorage.setItem(`draft_record_${selectedPet.id}`, JSON.stringify(form));
+            }, 300);
+            return () => clearTimeout(timeout);
+        }
+    }, [form, selectedPet, showWizard]);
 
     useEffect(() => {
         const fetchPets = async () => {
             try {
-                const res = await fetch('http://localhost:3001/api/pets');
+                const res = await fetch(`${API_BASE_URL}/api/pets`);
                 if (res.ok) {
                     const data = await res.json();
                     setPets(data);
@@ -55,13 +90,60 @@ const Clinical = () => {
         fetchPets();
     }, []);
 
+    const fetchTimeline = async (petId: number) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/pets/${petId}/timeline`);
+            if (res.ok) {
+                const data = await res.json();
+                setTimeline(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const handleSelectPet = (pet: Pet) => {
         setSelectedPet(pet);
-        // Mock timeline for UI demo
-        setTimeline([
-            { id: 1, date: new Date(), type: 'Consulta', title: 'Check-up Mensal', doctor: 'Dr. Saulo', notes: 'Animal em ótimas condições.' },
-            { id: 2, date: new Date(Date.now() - 86400000 * 30), type: 'Vacina', title: 'Vacina V10', doctor: 'Dr. Saulo', notes: 'Dose 1/3 aplicada.' }
-        ]);
+        fetchTimeline(pet.id);
+    };
+
+    const handleSubmitRecord = async () => {
+        if (!selectedPet) return;
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/medical-records`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    petId: selectedPet.id,
+                    veterinarian: 'Dr. Saulo', // Should come from context
+                    chiefComplaint: form.chiefComplaint,
+                    soapData: {
+                        subjective: form.subjective,
+                        objective: form.objective,
+                        assessment: form.assessment,
+                        plan: form.plan
+                    },
+                    diagnosis: form.diagnosis,
+                    treatment: form.treatment,
+                    prescriptions: form.prescriptions
+                })
+            });
+
+            if (res.ok) {
+                localStorage.removeItem(`draft_record_${selectedPet.id}`);
+                setShowWizard(false);
+                fetchTimeline(selectedPet.id);
+                setForm({
+                    chiefComplaint: '', subjective: '', objective: '', assessment: '', plan: '',
+                    diagnosis: '', treatment: '', prescriptions: []
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const filteredPets = pets.filter(p =>
@@ -167,55 +249,117 @@ const Clinical = () => {
                 <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
                     {activeTab === 'history' && (
                         <div className="space-y-8">
-                            {timeline.map((event, i) => (
-                                <div key={i} className="flex gap-6 relative">
+                            {timeline.length > 0 ? timeline.map((event, i) => (
+                                <div key={i} className="flex gap-6 relative group">
                                     <div className="flex flex-col items-center">
-                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg ${event.type === 'Consulta' ? 'bg-blue-500 shadow-blue-500/20' : 'bg-red-500 shadow-red-500/20'
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 ${event.type === 'MEDICAL_RECORD' ? 'bg-indigo-500 shadow-indigo-500/20' :
+                                            event.type === 'APPOINTMENT' ? 'bg-emerald-500 shadow-emerald-500/20' :
+                                                'bg-amber-500 shadow-amber-500/20'
                                             }`}>
-                                            {event.type === 'Consulta' ? <Stethoscope className="w-5 h-5" /> : <Syringe className="w-5 h-5" />}
+                                            {event.type === 'MEDICAL_RECORD' ? <FileText className="w-5 h-5" /> :
+                                                event.type === 'APPOINTMENT' ? <Calendar className="w-5 h-5" /> :
+                                                    <Pill className="w-5 h-5" />}
                                         </div>
-                                        {i < timeline.length - 1 && <div className="w-1 flex-1 bg-slate-50 rounded-full my-2"></div>}
+                                        {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-slate-100 rounded-full my-2"></div>}
                                     </div>
                                     <div className="flex-1 pb-10">
                                         <div className="flex items-center justify-between mb-4">
                                             <div>
                                                 <h4 className="text-lg font-black text-slate-800 tracking-tight uppercase leading-none">{event.title}</h4>
                                                 <div className="flex items-center gap-3 mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    <span>{event.date.toLocaleDateString()}</span>
+                                                    <span>{new Date(event.date).toLocaleDateString()}</span>
                                                     <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
-                                                    <span>{event.doctor}</span>
+                                                    <span>{event.subtitle || event.status}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button className="p-2 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all text-slate-400 hover:text-indigo-600"><Printer className="w-4 h-4" /></button>
                                                 <button className="p-2 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all text-slate-400 hover:text-indigo-600"><Edit2 className="w-4 h-4" /></button>
                                             </div>
                                         </div>
-                                        <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6">
-                                            <p className="text-sm font-medium text-slate-600 leading-relaxed italic">"{event.notes}"</p>
+                                        <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                                            <p className="text-sm font-medium text-slate-600 leading-relaxed italic">
+                                                {event.subtitle || 'Sem observações adicionais.'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className="py-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">Nenhum registro encontrado</div>
+                            )}
                         </div>
                     )}
                 </div>
             </section>
 
             {showWizard && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xl z-50 flex items-center justify-center p-6 animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden border border-white">
-                        <div className="p-10 text-center">
-                            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 mx-auto mb-6">
-                                <Activity className="w-10 h-10 animate-pulse" />
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xl z-50 flex items-center justify-center p-6 animate-in fade-in duration-300 overflow-y-auto">
+                    <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl border border-white my-auto flex flex-col h-[90vh]">
+                        <header className="px-10 py-8 border-b border-slate-50 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Prontuário Digital (SOAP)</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Sessão Ativa • Draft salvo localmente</p>
                             </div>
-                            <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Iniciar Novo Relato</h3>
-                            <p className="text-slate-400 font-medium mt-4 leading-relaxed">Você está prestes a abrir um novo registro clínico. Todos os dados financeiros e de estoque serão processados automaticamente ao finalizar.</p>
-                            <div className="mt-10 flex gap-4">
-                                <button onClick={() => setShowWizard(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all">Cancelar</button>
-                                <button className="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 shadow-xl shadow-slate-900/10 transition-all active:scale-95 leading-none">Abrir Prontuário</button>
+                            <button onClick={() => setShowWizard(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400"><X className="w-5 h-5" /></button>
+                        </header>
+
+                        <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Anamnese / Queixa</label>
+                                    <textarea
+                                        className="w-full bg-slate-50/50 border border-slate-100 rounded-3xl p-6 text-sm font-medium focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-300 transition-all h-32 outline-none"
+                                        placeholder="Descreva o motivo da consulta..."
+                                        value={form.chiefComplaint}
+                                        onChange={e => setForm({ ...form, chiefComplaint: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Observação Objetiva</label>
+                                    <textarea
+                                        className="w-full bg-slate-50/50 border border-slate-100 rounded-3xl p-6 text-sm font-medium focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-300 transition-all h-32 outline-none"
+                                        placeholder="Sinais vitais, exame físico..."
+                                        value={form.objective}
+                                        onChange={e => setForm({ ...form, objective: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Diagnóstico & Plano</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input
+                                        className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-indigo-600/5 outline-none"
+                                        placeholder="Diagnóstico Principal"
+                                        value={form.diagnosis}
+                                        onChange={e => setForm({ ...form, diagnosis: e.target.value })}
+                                    />
+                                    <input
+                                        className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-indigo-600/5 outline-none"
+                                        placeholder="Tratamento / Conduta"
+                                        value={form.treatment}
+                                        onChange={e => setForm({ ...form, treatment: e.target.value })}
+                                    />
+                                </div>
                             </div>
                         </div>
+
+                        <footer className="px-10 py-8 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Sincronizado</span>
+                            </div>
+                            <div className="flex gap-4">
+                                <button onClick={() => setShowWizard(false)} className="px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-100 transition-all">Descartar</button>
+                                <button
+                                    onClick={handleSubmitRecord}
+                                    disabled={isSaving}
+                                    className="bg-slate-900 text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 shadow-xl shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    {isSaving ? 'Salvando...' : 'Finalizar Atendimento'}
+                                </button>
+                            </div>
+                        </footer>
                     </div>
                 </div>
             )}

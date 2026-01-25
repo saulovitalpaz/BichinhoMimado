@@ -1,0 +1,20 @@
+
+// Unified Invoice Item (Clinical, Petshop, PDV)
+model InvoiceItem {
+  id          Int             @id @default(autoincrement())
+  billId      Int
+  bill        Bill            @relation(fields: [billId], references: [id])
+  category    InvoiceCategory
+  description String
+  amount      Float
+  quantity    Int             @default(1)
+  petId       Int?
+  pet         Pet?            @relation(fields: [petId], references: [id])
+  createdAt   DateTime        @default(now())
+}
+
+enum InvoiceCategory {
+  CLINICAL
+  PETSHOP
+  PDV
+}

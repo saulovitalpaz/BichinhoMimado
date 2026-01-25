@@ -19,7 +19,7 @@ const Login = () => {
             await login(email, password);
             navigate('/');
         } catch (err: any) {
-            setError('Credenciais inválidas. Tente admin@mimado.com');
+            setError(err.message || 'Credenciais inválidas. Tente novamente.');
         } finally {
             setIsLoading(false);
         }

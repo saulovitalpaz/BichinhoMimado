@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
+import GlobalSearch from './GlobalSearch';
 import {
     Home,
     Stethoscope,
@@ -32,6 +34,7 @@ interface NavItem {
     color: string;
 }
 
+
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -46,7 +49,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         }
         const checkStatus = async () => {
             try {
-                const res = await fetch('http://localhost:3001/api/health');
+                const res = await fetch(`${API_BASE_URL}/api/health`);
                 if (res.ok) setIsOnline(true);
                 else setIsOnline(false);
             } catch (e) {
@@ -96,7 +99,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ];
 
     const filterNavByRole = (items: NavItem[]) => {
-        if (user.role === 'ADMIN') return items;
+        if (user.role === 'admin_business' || user.role === 'admin_vet') return items;
 
         const roleRestrictions: Record<string, string[]> = {
             VETERINARIAN: ['/finance', '/petshop', '/vendas'],
@@ -113,8 +116,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="flex h-screen bg-[#FDFDFD] text-slate-600 font-sans overflow-hidden">
             {/* Sidebar */}
             <aside
-                className={`bg-white border-r border-slate-100 flex-shrink-0 flex flex-col z-30 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-16' : 'w-44'
-                    }`}
+                className={`bg-white border-r border-slate-100 flex-shrink-0 flex flex-col z-30 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-16' : 'w-44 md:w-52'
+                    } ${isCollapsed ? '' : 'hidden md:flex'} md:flex`}
             >
                 {/* Brand Header */}
                 <div className={`flex flex-col items-center justify-center border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'h-14' : 'h-24'
@@ -140,8 +143,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             key={item.path}
                             to={item.path}
                             className={`flex items-center rounded-xl text-[11px] font-semibold transition-all duration-200 group ${location.pathname === item.path
-                                    ? `${theme.primaryBg} ${theme.primary}`
-                                    : 'hover:bg-slate-50/80 text-slate-400 hover:text-slate-600'
+                                ? `${theme.primaryBg} ${theme.primary}`
+                                : 'hover:bg-slate-50/80 text-slate-400 hover:text-slate-600'
                                 } ${isCollapsed ? 'justify-center py-2.5 px-0' : 'px-3 py-2'}`}
                         >
                             <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform ${location.pathname === item.path ? theme.primary : 'opacity-70 group-hover:opacity-100'
@@ -173,8 +176,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto flex flex-col relative w-full">
-                <header className={`backdrop-blur-md bg-white/80 border-b border-slate-50 sticky top-0 z-20 h-14 flex justify-between items-center px-6`}>
-                    <div className="flex items-center space-x-4">
+                <header className={`backdrop-blur-md bg-white/80 border-b border-slate-50 sticky top-0 z-20 h-14 md:h-16 flex justify-between items-center px-4 md:px-6`}>
+                    <div className="flex items-center space-x-2 md:space-x-4">
                         <button
                             onClick={() => setIsCollapsed(!isCollapsed)}
                             className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 active:scale-95"
@@ -183,8 +186,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         </button>
 
                         {/* Workspace Switcher */}
-                        {(user.role === 'ADMIN') && (
-                            <div className="hidden sm:flex bg-slate-50/80 p-1 rounded-xl border border-slate-100/50">
+                        {(user.role === 'admin_business' || user.role === 'admin_vet') && (
+                            <div className="hidden md:flex bg-slate-50/80 p-1 rounded-xl border border-slate-100/50">
                                 <button
                                     onClick={() => switchWorkspace('clinical')}
                                     className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!isPetshopMode ? 'bg-white text-purple-600 shadow-sm border border-purple-50' : 'text-slate-400 hover:text-slate-600'
@@ -203,18 +206,33 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         )}
                     </div>
 
-                    <div className="flex items-center space-x-4">
-                        <div className="hidden sm:flex flex-col items-end mr-2">
-                            <span className="text-[10px] font-black text-slate-800 uppercase leading-none tracking-tight">{user.name}</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{user.role}</span>
+                    <div className="hidden lg:block">
+                        <GlobalSearch />
+                    </div>
+
+                    <div className="flex items-center space-x-3 md:space-x-4">
+                        <div className="hidden md:flex flex-col items-end mr-2">
+                            <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${user.role.includes('admin') ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                    user.role === 'vet' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                        'bg-slate-50 text-slate-500 border-slate-100'
+                                    }`}>
+                                    {user.role === 'admin_business' ? 'Admin / Gestor' :
+                                        user.role === 'admin_vet' ? 'Admin / Diretor' :
+                                            user.role === 'vet' ? 'Veterinário' :
+                                                user.role === 'receptionist' ? 'Recepção' : user.role}
+                                </span>
+                                <span className="text-[10px] font-black text-slate-800 uppercase leading-none tracking-tight">{user.name}</span>
+                            </div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Sessão Ativa</span>
                         </div>
-                        <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400 shadow-sm">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400 shadow-sm">
                             {user.name[0]}
                         </div>
                     </div>
                 </header>
 
-                <div className="p-6 h-full max-w-[1400px] w-full mx-auto md:p-8">
+                <div className="p-4 sm:p-6 md:p-8 h-full max-w-[1600px] w-full mx-auto">
                     {children}
                 </div>
             </main>

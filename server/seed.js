@@ -9,9 +9,11 @@ async function main() {
     console.log('👥 Creating users...');
     await prisma.user.createMany({
         data: [
-            { name: 'Administrador', email: 'admin@mimado.com', passwordHash: 'admin123', role: 'ADMIN' },
-            { name: 'Dr. Veterinário', email: 'vet@mimado.com', passwordHash: 'vet123', role: 'VETERINARIAN' },
-            { name: 'Recepção', email: 'recepcao@mimado.com', passwordHash: 'recep123', role: 'RECEPTIONIST' }
+            { name: 'Maressa', email: 'maressa@mimado.com', passwordHash: '12345', role: 'admin_business' },
+            { name: 'Giovana', email: 'giovana@mimado.com', passwordHash: '12345', role: 'admin_vet' },
+            { name: 'Veterinario', email: 'vet@mimado.com', passwordHash: '12345', role: 'vet' },
+            { name: 'Recepção Petshop', email: 'petshop@mimado.com', passwordHash: '12345', role: 'receptionist' },
+            { name: 'Recepção clínica', email: 'clinica@mimado.com', passwordHash: '12345', role: 'receptionist' }
         ]
     });
 

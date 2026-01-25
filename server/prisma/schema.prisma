@@ -31,6 +31,8 @@ model AuditLog {
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
   changes   String?  // JSON string of changes
+  ipAddress String?  // LGPD Compliance
+  userAgent String?  // LGPD Compliance
   timestamp DateTime @default(now())
 }
 
@@ -63,6 +65,7 @@ model Pet {
   tutor          Tutor           @relation(fields: [tutorId], references: [id])
   medicalRecords MedicalRecord[]
   appointments   Appointment[]
+  invoiceItems   InvoiceItem[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -88,6 +91,8 @@ model MedicalRecord {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   deletedAt      DateTime?      // Soft Delete
+  
+  @@index([deletedAt])
 }
 
 model Prescription {
@@ -138,22 +143,26 @@ model Product {
 }
 
 model Bill {
-  id            Int      @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   description   String?
   amount        Float
   dueDate       DateTime
   paidDate      DateTime?
-  paymentMethod String? // Credit, Debit, Cash, Pix
-  type          String   @default("Receivable") // Receivable (Receita), Payable (Despesa)
-  status        String   // Paid, Pending, Overdue
+  paymentMethod String?       // Credit, Debit, Cash, Pix
+  type          String        @default("Receivable") // Receivable (Receita), Payable (Despesa)
+  status        String        // Paid, Pending, Overdue
   
   tutorId       Int?
-  tutor         Tutor?   @relation(fields: [tutorId], references: [id])
+  tutor         Tutor?        @relation(fields: [tutorId], references: [id])
   
-  category      String?  // 'Clinical', 'Petshop', 'Retail', 'Operational'
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime? // Soft Delete
+  category      String?       // 'Clinical', 'Petshop', 'Retail', 'Operational'
+  items         InvoiceItem[]
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?     // Soft Delete
+  
+  @@index([deletedAt])
 }
 
 model DailyCashFlow {
@@ -189,4 +198,24 @@ enum Role {
 enum DailyCashFlowStatus {
   OPEN
   CLOSED
+}
+
+// Unified Invoice Item (Clinical, Petshop, PDV)
+model InvoiceItem {
+  id          Int             @id @default(autoincrement())
+  billId      Int
+  bill        Bill            @relation(fields: [billId], references: [id])
+  category    InvoiceCategory
+  description String
+  amount      Float
+  quantity    Int             @default(1)
+  petId       Int?
+  pet         Pet?            @relation(fields: [petId], references: [id])
+  createdAt   DateTime        @default(now())
+}
+
+enum InvoiceCategory {
+  CLINICAL
+  PETSHOP
+  PDV
 }

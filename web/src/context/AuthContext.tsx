@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 // import { loginUser } from '../utils/api'; // Commented out until API is ready
 
-// Types
+import { API_BASE_URL } from '../config';
+
 interface User {
     id: string;
     name: string;
@@ -34,33 +35,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     const login = async (email: string, password: string) => {
-        // Mock Login for now - will be replaced by API call later
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-        let mockUser: User;
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Credenciais inválidas');
+            }
 
-        if (email === 'admin@mimado.com') {
-            mockUser = { id: '1', name: 'Administrador', email, role: 'admin_business' };
-        } else if (email === 'vet@mimado.com') {
-            mockUser = { id: '2', name: 'Dr. Veterinário', email, role: 'vet' };
-        } else if (email === 'recepcao@mimado.com') {
-            mockUser = { id: '3', name: 'Recepção', email, role: 'receptionist' };
-        } else {
-            throw new Error('Credenciais inválidas');
+            const userData = await res.json();
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+
+            // Workspace logic based on new roles
+            if (userData.role === 'admin_business' || userData.role === 'admin_vet') {
+                setWorkspace('clinical');
+            } else if (userData.role === 'groomer') {
+                setWorkspace('petshop');
+            } else {
+                setWorkspace('clinical');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Login error:', error);
+            throw error;
+        } finally {
+            setLoading(false);
         }
-
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-
-        // Workspace logic
-        if (mockUser.role === 'admin_business' || mockUser.role === 'admin_vet') {
-            setWorkspace('clinical');
-        } else {
-            setWorkspace('clinical');
-        }
-
-        return true;
     };
 
     const logout = () => {

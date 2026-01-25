@@ -12,6 +12,7 @@ import {
     CheckCircle2,
     ChevronRight
 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface Appointment {
     id: number;
@@ -23,7 +24,7 @@ interface Appointment {
 
 const Petshop = () => {
     const [viewMode, setViewMode] = useState('kanban');
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const columns = [
@@ -37,7 +38,7 @@ const Petshop = () => {
     useEffect(() => {
         const fetchAppointments = async () => {
             try {
-                const res = await fetch('http://localhost:3001/api/appointments');
+                const res = await fetch(`${API_BASE_URL}/api/appointments`);
                 if (res.ok) {
                     const data = await res.json();
                     setAppointments(data.filter((a: any) => a.type === 'Petshop'));

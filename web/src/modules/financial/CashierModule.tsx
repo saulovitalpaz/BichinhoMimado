@@ -1,18 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, User, Dog, CheckCircle, Search, Filter, Shield, ShieldOff, MoreHorizontal, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
-
-interface Bill {
-    id: string;
-    description: string;
-    amount: number;
-    status: 'PENDING' | 'PAID' | 'CANCELED';
-    tutor: { name: string };
-    createdAt: string;
-    paymentMethod?: string;
-}
+import { Wallet, User, Dog, CheckCircle, Search, Filter, Shield, ShieldOff, MoreHorizontal, ArrowUpRight, ArrowDownLeft, DollarSign } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 const CashierModule = () => {
-    const [bills, setBills] = useState<Bill[]>([]);
+    const [bills, setBills] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [privacyMode, setPrivacyMode] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -20,7 +11,7 @@ const CashierModule = () => {
     useEffect(() => {
         const fetchBills = async () => {
             try {
-                const res = await fetch('http://localhost:3001/api/bills');
+                const res = await fetch(`${API_BASE_URL}/api/bills`);
                 if (res.ok) {
                     const data = await res.json();
                     setBills(data);

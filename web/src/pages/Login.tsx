@@ -35,15 +35,9 @@ const Login = () => {
 
             <div className="w-full max-w-[420px] relative z-10 animate-in fade-in zoom-in-95 duration-1000">
                 {/* Logo Section */}
-                <div className="flex flex-col items-center mb-10">
-                    <div className="w-20 h-20 rounded-[2.5rem] bg-indigo-600 p-1 mb-4 shadow-2xl shadow-indigo-600/30 transform rotate-12 transition-transform hover:rotate-0 duration-500">
-                        <div className="w-full h-full rounded-[2.2rem] bg-white flex items-center justify-center overflow-hidden">
-                            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
-                        </div>
-                    </div>
-                    <div className="text-center">
-                        <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase leading-none">Bichinho</h1>
-                        <p className="text-sm font-bold text-indigo-600 uppercase tracking-[0.3em] mt-1 ml-1">Mimado</p>
+                <div className="flex flex-col items-center mb-12">
+                    <div className="w-64 h-32 flex items-center justify-center transition-transform duration-500 hover:scale-105 active:scale-95">
+                        <img src="/Logo.png" alt="Bichinho Mimado" className="w-full h-full object-contain" />
                     </div>
                 </div>
 

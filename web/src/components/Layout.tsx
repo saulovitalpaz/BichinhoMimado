@@ -120,21 +120,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     } ${isCollapsed ? '' : 'hidden md:flex'} md:flex`}
             >
                 {/* Brand Header */}
-                <div className={`flex flex-col items-center justify-center border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'h-14' : 'h-24'
+                <div className={`flex items-center justify-center border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'h-14' : 'h-24'
                     }`}>
-                    <div className="relative transform scale-90">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-sm bg-white p-0.5">
-                            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-xl" />
-                        </div>
+                    <div className={`relative transition-all duration-300 ${isCollapsed ? 'w-10 h-10' : 'w-36 h-18'}`}>
+                        <img src="/Logo.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
-                    {!isCollapsed && (
-                        <div className="mt-1 text-center animate-in fade-in slide-in-from-top-1">
-                            <h1 className="text-[10px] font-black text-slate-800 tracking-tighter uppercase leading-none">Bichinho</h1>
-                            <p className={`text-[8px] font-bold text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} uppercase tracking-[0.2em]`}>
-                                {isPetshopMode ? 'Petshop' : 'Mimado'}
-                            </p>
-                        </div>
-                    )}
                 </div>
 
                 <nav className="mt-3 flex-1 overflow-y-auto px-2 space-y-0.5 custom-scrollbar">

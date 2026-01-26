@@ -7,7 +7,7 @@
     "postinstall": "npm run install:all",
     "dev:web": "npm run dev --prefix web",
     "dev:server": "node server/index.js",
-    "dev": "echo 'Iniciando Frontend e Backend... (Use Ctrl+C para parar)' && start npm run dev:web && npm run dev:server",
+    "dev": "start npm run dev:web && npm run dev:server",
     "build": "npm run build --prefix web",
     "start": "node server/index.js"
   },

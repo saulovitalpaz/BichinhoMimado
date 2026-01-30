@@ -72,6 +72,44 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// === Services (New) ===
+app.get('/api/services', async (req, res) => {
+    try {
+        const services = await prisma.service.findMany();
+        res.json(services);
+    } catch (e) {
+        // If Service table doesn't exist yet, return mock or empty
+        res.json([]);
+    }
+});
+
+app.post('/api/services', async (req, res) => {
+    try {
+        const { name, description, price, duration, category, active } = req.body;
+        const service = await prisma.service.create({
+            data: { name, description, price, duration, category, active }
+        });
+        res.json(service);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to create service' });
+    }
+});
+
+app.put('/api/services/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description, price, duration, category, active } = req.body;
+        const service = await prisma.service.update({
+            where: { id: parseInt(id) },
+            data: { name, description, price, duration, category, active }
+        });
+        res.json(service);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to update service' });
+    }
+});
+
 // === Medical ===
 app.get('/api/appointments', async (req, res) => {
     const { date } = req.query;
@@ -89,22 +127,36 @@ app.get('/api/appointments', async (req, res) => {
 
 app.post('/api/appointments', async (req, res) => {
     try {
-        const { petId, date, type, service, veterinarianId, groomer, petshopStatus, price } = req.body;
+        const { petId, date, type, service, veterinarianId, groomer, petshopStatus, price, notes } = req.body;
+
+        if (!petId && (!notes || !notes.includes('PROVISÓRIO'))) {
+            return res.status(400).json({ error: 'Pet is required for non-provisional appointments' });
+        }
+
         const appointment = await prisma.appointment.create({
             data: {
-                petId,
+                petId: petId ? parseInt(petId) : null,
+                tutorId: req.body.tutorId ? parseInt(req.body.tutorId) : null, // Save tutorId if provided
                 date: new Date(date),
                 type,
                 service,
                 groomer,
                 petshopStatus,
                 price: parseFloat(price) || 0,
-                status: 'SCHEDULED'
+                status: 'SCHEDULED',
+                notes,
+                deletedAt: null
             }
         });
         res.json(appointment);
     } catch (e) {
-        res.status(500).json({ error: 'Failed to create appointment' });
+        console.error('Appointment Create Error:', e);
+        res.status(500).json({
+            error: 'Failed to create appointment',
+            details: e.message,
+            code: e.code,
+            meta: e.meta
+        });
     }
 });
 
@@ -117,11 +169,86 @@ app.get('/api/petshop/billable-services', async (req, res) => {
                 // We consider it billable if it hasn't been completed/billed yet
                 status: 'SCHEDULED'
             },
-            include: { pet: { include: { tutor: true } } }
+            include: { 
+                pet: { include: { tutor: true } },
+                tutor: true // Also include direct tutor link
+            }
         });
         res.json(services);
     } catch (e) {
         res.status(500).json({ error: 'Failed to fetch billable services' });
+    }
+});
+
+// === Tutors & Pets ===
+app.get('/api/tutors', async (req, res) => {
+    try {
+        const tutors = await prisma.tutor.findMany({ include: { patients: true } });
+        res.json(tutors);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch tutors' });
+    }
+});
+
+app.post('/api/tutors', async (req, res) => {
+    try {
+        const { name, cpf, phone, email, address, notes } = req.body;
+        if (!name) return res.status(400).json({ error: 'Nome é obrigatório' });
+
+        const tutor = await prisma.tutor.create({
+            data: {
+                name,
+                cpf,
+                phone,
+                email,
+                address,
+                observations: notes, // Map notes to observations
+                deletedAt: null
+            }
+        });
+        res.json(tutor);
+    } catch (e) {
+        console.error('Tutor Create Error:', e);
+        res.status(500).json({ error: e.message || 'Failed to create tutor' });
+    }
+});
+
+app.post('/api/pets', async (req, res) => {
+    try {
+        const { name, species, breed, age, weight, gender, tutorId, notes, allergies } = req.body;
+
+        if (!name || !tutorId) {
+            return res.status(400).json({ error: 'Nome do Pet e Vínculo com Tutor são obrigatórios' });
+        }
+
+        // Calculate approx birthDate from age if provided
+        let birthDate = null;
+        if (age) {
+            const today = new Date();
+            birthDate = new Date(today.setFullYear(today.getFullYear() - parseInt(age)));
+        }
+
+        // Combine notes and allergies into observations
+        let observations = notes || '';
+        if (allergies) observations += `\n[Alergias]: ${allergies}`;
+
+        const pet = await prisma.pet.create({
+            data: {
+                name,
+                species,
+                breed,
+                birthDate, // Map age to birthDate
+                weight: weight ? parseFloat(weight) : null,
+                gender,
+                tutorId: parseInt(tutorId),
+                observations, // Map notes to observations
+                deletedAt: null
+            }
+        });
+        res.json(pet);
+    } catch (e) {
+        console.error('Pet Create Error:', e);
+        res.status(500).json({ error: e.message || 'Failed to create pet' });
     }
 });
 
@@ -212,7 +339,7 @@ app.post('/api/medical-records', async (req, res) => {
         // 3. Create Bill with unified InvoiceItems
         const bill = await prisma.bill.create({
             data: {
-                tutorId: (await prisma.pet.findUnique({ where: { id: petId } })).tutorId,
+                tutorId: (await prisma.pet.findUnique({ where: { id: petId } }))?.tutorId,
                 description: `Atendimento Clínico - ${veterinarian}`,
                 amount: invoiceItems.reduce((sum, item) => sum + item.amount, 0),
                 dueDate: new Date(),
@@ -319,7 +446,7 @@ app.delete('/api/bills/:id', async (req, res) => {
 // === Global Search ===
 app.get('/api/search', async (req, res) => {
     const { q } = req.query;
-    if (!q || q.length < 2) return res.json([]);
+    if (!q) return res.json([]);
 
     const query = q.toString();
 
@@ -333,8 +460,8 @@ app.get('/api/search', async (req, res) => {
                     ],
                     deletedAt: null
                 },
-                select: { id: true, name: true, tutor: { select: { name: true } } },
-                take: 5
+                select: { id: true, name: true, tutorId: true, tutor: { select: { name: true } } },
+                take: 20
             }),
             prisma.tutor.findMany({
                 where: {
@@ -345,7 +472,7 @@ app.get('/api/search', async (req, res) => {
                     deletedAt: null
                 },
                 select: { id: true, name: true, cpf: true },
-                take: 5
+                take: 20
             }),
             prisma.bill.findMany({
                 where: {
@@ -463,6 +590,7 @@ app.get('/api/pets/:id/timeline', async (req, res) => {
 app.get('/api/products', async (req, res) => {
     try {
         const products = await prisma.product.findMany({
+            where: { deletedAt: null },
             orderBy: { name: 'asc' }
         });
         res.json(products);
@@ -473,18 +601,29 @@ app.get('/api/products', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
     try {
-        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry } = req.body;
+        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry, userId } = req.body;
+        const initialStock = parseInt(stock) || 0;
+
         const product = await prisma.product.create({
             data: {
                 name,
                 description,
                 sku,
                 category,
-                stock: parseInt(stock) || 0,
+                stock: initialStock,
                 minStock: parseInt(minStock) || 5,
                 costPrice: parseFloat(costPrice) || 0,
                 salePrice: parseFloat(salePrice) || 0,
-                expiry: expiry ? new Date(expiry) : null
+                expiry: expiry ? new Date(expiry) : null,
+                deletedAt: null,
+                stockMovements: {
+                    create: {
+                        type: 'ENTRY',
+                        quantity: initialStock,
+                        reason: 'Estoque Inicial',
+                        userId: userId || null
+                    }
+                }
             }
         });
         res.json(product);
@@ -497,24 +636,75 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry } = req.body;
+        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry, userId, reason } = req.body;
+
+        // 1. Get current product to check stock change
+        const currentProduct = await prisma.product.findUnique({ where: { id: parseInt(id) } });
+
+        if (!currentProduct) return res.status(404).json({ error: 'Product not found' });
+
+        const newStock = stock !== undefined ? parseInt(stock) : currentProduct.stock;
+        const stockDiff = newStock - currentProduct.stock;
+
+        // 2. Prepare Update Data
+        const updateData = {
+            name,
+            description,
+            sku,
+            category,
+            stock: newStock,
+            minStock: minStock !== undefined ? parseInt(minStock) : undefined,
+            costPrice: costPrice !== undefined ? parseFloat(costPrice) : undefined,
+            salePrice: salePrice !== undefined ? parseFloat(salePrice) : undefined,
+            expiry: expiry ? new Date(expiry) : undefined
+        };
+
+        // 3. Update and potentially create movement
         const product = await prisma.product.update({
             where: { id: parseInt(id) },
             data: {
-                name,
-                description,
-                sku,
-                category,
-                stock: stock !== undefined ? parseInt(stock) : undefined,
-                minStock: minStock !== undefined ? parseInt(minStock) : undefined,
-                costPrice: costPrice !== undefined ? parseFloat(costPrice) : undefined,
-                salePrice: salePrice !== undefined ? parseFloat(salePrice) : undefined,
-                expiry: expiry ? new Date(expiry) : undefined
+                ...updateData,
+                stockMovements: stockDiff !== 0 ? {
+                    create: {
+                        type: stockDiff > 0 ? 'ENTRY' : 'EXIT',
+                        quantity: Math.abs(stockDiff),
+                        reason: reason || 'Ajuste Manual',
+                        userId: userId || null
+                    }
+                } : undefined
             }
         });
         res.json(product);
     } catch (e) {
+        console.error(e);
         res.status(500).json({ error: 'Failed to update product' });
+    }
+});
+
+app.delete('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.product.update({
+            where: { id: parseInt(id) },
+            data: { deletedAt: new Date() }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete product' });
+    }
+});
+
+app.get('/api/products/:id/history', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const history = await prisma.stockMovement.findMany({
+            where: { productId: parseInt(id) },
+            orderBy: { createdAt: 'desc' },
+            include: { user: { select: { name: true } } }
+        });
+        res.json(history);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch product history' });
     }
 });
 
@@ -597,135 +787,6 @@ app.get('/api/petshop/stats', async (req, res) => {
     }
 });
 
-
-// === Tutors ===
-app.get('/api/tutors', async (req, res) => {
-    try {
-        const tutors = await prisma.tutor.findMany({
-            where: { deletedAt: null },
-            include: { pets: true },
-            orderBy: { name: 'asc' }
-        });
-        res.json(tutors);
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to fetch tutors' });
-    }
-});
-
-app.post('/api/tutors', async (req, res) => {
-    try {
-        const { name, cpf, phone, email, address, notes } = req.body;
-        const tutor = await prisma.tutor.create({
-            data: { name, cpf, phone, email, address, notes }
-        });
-        res.json(tutor);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Failed to create tutor' });
-    }
-});
-
-app.put('/api/tutors/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const { name, cpf, phone, email, address, notes } = req.body;
-        const tutor = await prisma.tutor.update({
-            where: { id: parseInt(id) },
-            data: { name, cpf, phone, email, address, notes }
-        });
-        res.json(tutor);
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to update tutor' });
-    }
-});
-
-// === Pets ===
-app.get('/api/pets', async (req, res) => {
-    try {
-        const pets = await prisma.pet.findMany({
-            where: { deletedAt: null },
-            include: { tutor: true },
-            orderBy: { name: 'asc' }
-        });
-        res.json(pets);
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to fetch pets' });
-    }
-});
-
-app.post('/api/pets', async (req, res) => {
-    try {
-        const { name, species, breed, age, weight, gender, tutorId, notes, allergies } = req.body;
-        const pet = await prisma.pet.create({
-            data: {
-                name,
-                species,
-                breed,
-                age: parseInt(age) || 0,
-                weight: parseFloat(weight) || 0,
-                gender,
-                tutorId: parseInt(tutorId),
-                notes,
-                allergies
-            }
-        });
-        res.json(pet);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Failed to create pet' });
-    }
-});
-
-
-// === Services ===
-app.get('/api/services', async (req, res) => {
-    try {
-        const services = await prisma.service.findMany({
-            where: { active: true },
-            orderBy: { name: 'asc' }
-        });
-        res.json(services);
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to fetch services' });
-    }
-});
-
-app.post('/api/services', async (req, res) => {
-    try {
-        const { name, description, price, duration, category } = req.body;
-        const service = await prisma.service.create({
-            data: {
-                name,
-                description,
-                price: parseFloat(price),
-                duration: parseInt(duration) || 30,
-                category
-            }
-        });
-        res.json(service);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Failed to create service' });
-    }
-});
-
-app.put('/api/services/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const { name, description, price, duration, category, active } = req.body;
-        const service = await prisma.service.update({
-            where: { id: parseInt(id) },
-            data: {
-                name, description, price: price ? parseFloat(price) : undefined,
-                duration: duration ? parseInt(duration) : undefined,
-                category, active
-            }
-        });
-        res.json(service);
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to update service' });
-    }
-});
 
 // === Core Data ===
 app.get('/api/health', (req, res) => {

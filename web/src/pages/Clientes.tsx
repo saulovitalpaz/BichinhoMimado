@@ -58,7 +58,9 @@ const Clientes = () => {
                 const appts = await resAppts.json();
                 // Filter appointments for this tutor's pets
                 const tutorPetIds = tutor.pets?.map((p: any) => p.id) || [];
-                const tutorAppts = appts.filter((a: any) => tutorPetIds.includes(a.petId)).map((a: any) => ({
+                const tutorAppts = appts.filter((a: any) =>
+                    (a.tutorId === tutor.id) || (tutorPetIds.includes(a.petId))
+                ).map((a: any) => ({
                     type: 'appointment',
                     date: a.date || a.createdAt,
                     data: a
@@ -158,7 +160,7 @@ const Clientes = () => {
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao salvar pet');
+            alert('Erro ao salvar pet. Verifique se o tutor foi criado corretamente.');
         }
     };
 
@@ -284,7 +286,7 @@ const Clientes = () => {
                                     {editingTutor && step === 1 ? 'Editar Cliente' : step === 1 ? 'Novo Cliente' : 'Adicionar Pet'}
                                 </h3>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                    Passo {step} de {editingTutor ? 1 : 2}
+                                    Passo {step} de {step === 2 || !editingTutor ? 2 : 1}
                                 </p>
                             </div>
                             <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-red-500">

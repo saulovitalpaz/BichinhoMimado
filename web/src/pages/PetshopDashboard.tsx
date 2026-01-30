@@ -54,22 +54,59 @@ const PetshopDashboard = () => {
 
     const activeQueue = appointments.filter(a => a.petshopStatus !== 'Pronto' && a.petshopStatus !== 'Finalizado').slice(0, 3);
 
+    const handleCheckIn = async (appointmentId: number) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/appointments/${appointmentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'CHECKED_IN',
+                    petshopStatus: 'Aguardando'
+                })
+            });
+
+            if (res.ok) {
+                // Refresh data
+                const [statsRes, apptRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/petshop/stats`),
+                    fetch(`${API_BASE_URL}/api/appointments`)
+                ]);
+
+                if (statsRes.ok) setStats(await statsRes.json());
+                if (apptRes.ok) {
+                    const apptData = await apptRes.json();
+                    setAppointments(apptData.filter((a: any) => a.type === 'Petshop').slice(0, 5));
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
-            <header>
-                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Dashboard Petshop</h2>
-                <p className="text-[11px] text-slate-400 font-medium uppercase tracking-widest mt-1">Visão geral de vendas e fluxo de estética</p>
+            <header className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Dashboard Petshop</h2>
+                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-widest mt-1">Centro de Controle Operacional</p>
+                </div>
+                <div className="flex gap-4">
+                    <Link to="/agenda" className="bg-indigo-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center active:scale-95">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Novo Agendamento
+                    </Link>
+                </div>
             </header>
 
             <div className="grid grid-cols-12 gap-8">
                 {/* Main Ops */}
                 <div className="col-span-12 lg:col-span-8 space-y-8">
                     {/* Active Queue */}
-                    <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden min-h-[300px]">
                         <header className="p-8 bg-slate-900 text-white flex justify-between items-center">
                             <div className="flex items-center space-x-3">
                                 <Scissors className="w-5 h-5 text-indigo-400" />
-                                <span className="font-black text-[11px] uppercase tracking-[0.2em]">Fila de Estética</span>
+                                <span className="font-black text-[11px] uppercase tracking-[0.2em]">Fila de Estética (Andamento)</span>
                             </div>
                             <span className="bg-white/10 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest leading-none">
                                 {activeQueue.length} em execução
@@ -99,7 +136,8 @@ const PetshopDashboard = () => {
                                 </div>
                             ))}
                             {activeQueue.length === 0 && (
-                                <div className="col-span-full h-32 flex items-center justify-center border-2 border-dashed border-slate-50 rounded-[2rem] text-slate-200">
+                                <div className="col-span-full h-full flex flex-col items-center justify-center text-slate-200 py-12">
+                                    <Scissors className="w-12 h-12 mb-4 opacity-20" />
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Fila vazia no momento</span>
                                 </div>
                             )}
@@ -146,6 +184,39 @@ const PetshopDashboard = () => {
 
                 {/* Sidebar Stats */}
                 <div className="col-span-12 lg:col-span-4 space-y-8">
+                    {/* Next Up / Check-in */}
+                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden">
+                        <header className="flex justify-between items-center mb-6">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Agenda: Próximos</h3>
+                            <button onClick={() => window.location.reload()} className="text-slate-300 hover:text-indigo-500 transition-colors"><Clock className="w-4 h-4" /></button>
+                        </header>
+
+                        <div className="space-y-3">
+                            {appointments.filter(a => a.status === 'SCHEDULED').slice(0, 4).map((appt, i) => (
+                                <div key={i} className="flex items-center gap-3 group">
+                                    <div className="flex-1 p-4 bg-slate-50/50 rounded-2xl border border-slate-50 flex justify-between items-center group-hover:border-indigo-100 transition-all">
+                                        <div>
+                                            <span className="text-[10px] font-black text-slate-800 block uppercase tracking-tight">{appt.pet?.name}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-widest mt-0.5">{new Date(appt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {appt.service}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCheckIn(appt.id)}
+                                        className="h-full px-4 rounded-2xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center gap-1 shadow-sm opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0"
+                                        title="Iniciar Atendimento / Check-in"
+                                    >
+                                        <ArrowUpRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                            {appointments.filter(a => a.status === 'SCHEDULED').length === 0 && (
+                                <div className="text-center py-8">
+                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Sem próximos agendamentos</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden group">
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">Vendas Hoje</h3>
@@ -156,39 +227,12 @@ const PetshopDashboard = () => {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Transações</span>
                                 <span className="text-sm font-black text-slate-700">{stats.salesCount}</span>
                             </div>
-                            <div className="flex justify-between items-center p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destaque</span>
-                                <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight">Vendas Diretas</span>
-                            </div>
                         </div>
 
-                        <Link to="/vendas" className="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all flex items-center justify-center space-x-2 active:scale-[0.98]">
+                        <Link to="/finance" className="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all flex items-center justify-center space-x-2 active:scale-[0.98]">
                             <ShoppingBag className="w-4 h-4 text-orange-400" />
                             <span>Abrir PDV</span>
                         </Link>
-                    </div>
-
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
-                        <header className="flex justify-between items-center mb-6">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Próximos Horários</h3>
-                            <Calendar className="w-4 h-4 text-slate-300" />
-                        </header>
-                        <div className="space-y-4">
-                            {appointments.slice(0, 4).map((appt, i) => (
-                                <div key={i} className="flex items-center space-x-4">
-                                    <span className="text-[11px] font-black text-slate-800 tabular-nums w-12">
-                                        {new Date(appt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                    <div className="flex-1 p-3 bg-slate-50/50 rounded-2xl border border-slate-50 flex justify-between items-center px-4 hover:border-orange-100 transition-colors">
-                                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight">{appt.pet?.name}</span>
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{appt.service}</span>
-                                    </div>
-                                </div>
-                            ))}
-                            {appointments.length === 0 && (
-                                <p className="text-[10px] font-bold text-slate-300 text-center py-4 uppercase tracking-widest">Sem agendamentos</p>
-                            )}
-                        </div>
                     </div>
                 </div>
             </div>

@@ -11,7 +11,6 @@ import Petshop from './pages/Petshop';
 import Finance from './pages/Finance'; // Keeping for reference, but Financeiro nav will point to Cashier
 import Internation from './pages/Internation';
 import Agenda from './pages/Agenda'; // Keeping for reference, but Agenda nav will point to Calendar
-import Vendas from './pages/Vendas';
 import Clientes from './pages/Clientes';
 import PetshopDashboard from './pages/PetshopDashboard';
 import PetshopInventory from './pages/PetshopInventory';
@@ -52,10 +51,33 @@ const AppContent = () => {
                 {/* Dynamic Home Route */}
                 <Route path="/" element={<Dashboard />} />
 
-                {/* Clinical / Medical Routes */}
+                {/* Main Application Routes */}
                 <Route path="/clinical" element={<Clinical />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/estoque" element={<PetshopInventory />} />
+                <Route path="/petshop/monitor" element={<PetshopQueue />} />
+                <Route path="/internation" element={<Internation />} />
 
-                {/* Admin Routes */}
+                {/* Protected Specialized Modules */}
+                <Route
+                    path="/agenda"
+                    element={
+                        <ProtectedRoute roles={['vet', 'receptionist', 'admin_business', 'admin_vet']}>
+                            <Agenda />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/finance"
+                    element={
+                        <ProtectedRoute roles={['receptionist', 'admin_business', 'admin_vet']}>
+                            <CashierModule />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Admin Management */}
                 <Route
                     path="/admin/services"
                     element={
@@ -69,42 +91,6 @@ const AppContent = () => {
                     element={
                         <ProtectedRoute roles={['admin_business']}>
                             <AdminFinance />
-                        </ProtectedRoute>
-                    }
-                />
-
-                {/* Calendar Integration - Replaces old Agenda or accessed via specific route */}
-                <Route
-                    path="/agenda"
-                    element={
-                        <ProtectedRoute roles={['vet', 'receptionist', 'admin_business']}>
-                            <CalendarService />
-                        </ProtectedRoute>
-                    }
-                />
-
-                {/* Financial Routes */}
-                <Route
-                    path="/finance"
-                    element={
-                        <ProtectedRoute roles={['receptionist', 'admin_business']}>
-                            <CashierModule />
-                        </ProtectedRoute>
-                    }
-                />
-
-                {/* Other Routes */}
-                <Route path="/petshop" element={<Petshop />} />
-                <Route path="/petshop/monitor" element={<PetshopQueue />} />
-                <Route path="/internation" element={<Internation />} />
-                <Route path="/vendas" element={<Vendas />} />
-                <Route path="/clientes" element={<Clientes />} />
-                <Route path="/estoque" element={<PetshopInventory />} />
-                <Route
-                    path="/admin/services"
-                    element={
-                        <ProtectedRoute roles={['admin_business', 'admin_vet']}>
-                            <AdminServices />
                         </ProtectedRoute>
                     }
                 />

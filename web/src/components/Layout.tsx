@@ -31,11 +31,12 @@ import {
 } from 'lucide-react';
 
 interface NavItem {
-    path: string;
-    icon: any;
+    path?: string;
+    icon?: any;
     label: string;
-    color: string;
+    color?: string;
     roles?: string[];
+    type?: 'header';
 }
 
 
@@ -92,42 +93,48 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         logoBorder: 'border-purple-200'
     };
 
-    const clinicNav: NavItem[] = [
+    const clinicNav: any[] = [
+        { type: 'header', label: 'Operacional' },
         { path: '/', icon: Home, label: 'Painel', color: 'text-slate-400' },
-        { path: '/admin/services', icon: Tag, label: 'Serviços (Admin)', color: 'text-pink-500' },
-        { path: '/clinical', icon: Stethoscope, label: 'Clínica', color: 'text-emerald-500' },
-        { path: '/clientes', icon: Users, label: 'Clientes', color: 'text-blue-500' },
         { path: '/agenda', icon: Calendar, label: 'Agenda', color: 'text-indigo-500' },
-        { path: '/vendas', icon: ShoppingBag, label: 'Vendas', color: 'text-purple-500' },
-        { path: '/finance', icon: DollarSign, label: 'Financeiro', color: 'text-green-600' },
+        { path: '/clinical', icon: Stethoscope, label: 'Clínica', color: 'text-emerald-500' },
         { path: '/internation', icon: Activity, label: 'Internação', color: 'text-cyan-500' },
+        { path: '/finance', icon: Banknote, label: 'Caixa / Checkout', color: 'text-purple-600' },
+
+        { type: 'header', label: 'Cadastros' },
+        { path: '/clientes', icon: Users, label: 'Clientes & Pets', color: 'text-blue-500' },
+        { path: '/estoque', icon: Package, label: 'Estoque / Produtos', color: 'text-emerald-500' },
+        { path: '/admin/services', icon: Tag, label: 'Serviços / Preços', color: 'text-pink-500' },
     ];
 
-    const petshopNav: NavItem[] = [
+    const petshopNav: any[] = [
+        { type: 'header', label: 'Operacional' },
         { path: '/', icon: Store, label: 'Dashboard', color: 'text-orange-500' },
-        { path: '/petshop', icon: Scissors, label: 'Estética', color: 'text-pink-500' },
-        { path: '/vendas', icon: ShoppingBag, label: 'PDV', color: 'text-purple-500' },
         { path: '/agenda', icon: Calendar, label: 'Agenda', color: 'text-indigo-500' },
-        { path: '/clientes', icon: Users, label: 'Clientes', color: 'text-blue-500' },
-        { path: '/clientes', icon: Users, label: 'Clientes', color: 'text-blue-500' },
-        { path: '/estoque', icon: Package, label: 'Estoque', color: 'text-emerald-500' },
-        { label: 'Serviços (Admin)', path: '/admin/services', icon: Tag, color: 'text-pink-500', roles: ['admin_business', 'admin_vet'] },
-        { label: 'Financeiro', path: '/admin/finance', icon: Banknote, color: 'text-green-600', roles: ['admin_business'] }
+        { path: '/petshop/monitor', icon: Scissors, label: 'Monitor / Banho', color: 'text-pink-500' },
+        { path: '/finance', icon: Banknote, label: 'Caixa / PDV', color: 'text-purple-600' },
+
+        { type: 'header', label: 'Gestão & Cadastros' },
+        { path: '/clientes', icon: Users, label: 'Clientes & Pets', color: 'text-blue-500' },
+        { path: '/estoque', icon: Package, label: 'Estoque / Produtos', color: 'text-emerald-500' },
+        { path: '/admin/services', icon: Tag, label: 'Serviços / Preços', color: 'text-pink-500', roles: ['admin_business', 'admin_vet'] },
+        { label: 'Relatórios', path: '/admin/finance', icon: Grid, color: 'text-green-600', roles: ['admin_business'] }
     ];
 
     const filterNavByRole = (items: NavItem[]) => {
         if (user.role === 'admin_business' || user.role === 'admin_vet') return items;
 
         const roleRestrictions: Record<string, string[]> = {
-            VETERINARIAN: ['/finance', '/petshop', '/vendas'],
+            VETERINARIAN: ['/finance', '/petshop'],
             RECEPTIONIST: ['/internation'],
         };
 
         const restricted = roleRestrictions[user.role as keyof typeof roleRestrictions] || [];
-        return items.filter(item => !restricted.includes(item.path));
+        return items.filter(item => !item.path || !restricted.includes(item.path));
     };
 
-    const navItems = filterNavByRole(isPetshopMode ? petshopNav : clinicNav);
+    // FORCE PETSHOP NAV for this phase
+    const navItems = filterNavByRole(petshopNav);
 
     return (
         <div className="flex h-screen bg-[#FDFDFD] text-slate-600 font-sans overflow-hidden">
@@ -154,20 +161,30 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
 
                 <nav className="mt-3 flex-1 overflow-y-auto px-2 space-y-0.5 custom-scrollbar">
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={`flex items-center rounded-xl text-[11px] font-semibold transition-all duration-200 group ${location.pathname === item.path
-                                ? `${theme.primaryBg} ${theme.primary}`
-                                : 'hover:bg-slate-50/80 text-slate-400 hover:text-slate-600'
-                                } ${isCollapsed ? 'justify-center py-2.5 px-0' : 'px-3 py-2'}`}
-                        >
-                            <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform ${location.pathname === item.path ? theme.primary : 'opacity-70 group-hover:opacity-100'
-                                } ${isCollapsed ? 'm-0' : 'mr-2.5'}`} />
-                            {!isCollapsed && <span className="truncate">{item.label}</span>}
-                        </Link>
-                    ))}
+                    {navItems.map((item, idx) => {
+                        if (item.type === 'header') {
+                            return !isCollapsed && (
+                                <div key={`header-${idx}`} className="px-4 py-4 first:pt-2">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-350">{item.label}</span>
+                                </div>
+                            );
+                        }
+
+                        return item.path && item.icon && (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className={`flex items-center rounded-xl text-[11px] font-semibold transition-all duration-200 group ${location.pathname === item.path
+                                    ? `${theme.primaryBg} ${theme.primary}`
+                                    : 'hover:bg-slate-50/80 text-slate-400 hover:text-slate-600'
+                                    } ${isCollapsed ? 'justify-center py-2.5 px-0 mb-1' : 'px-3 py-2'}`}
+                            >
+                                <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform ${location.pathname === item.path ? theme.primary : 'opacity-70 group-hover:opacity-100'
+                                    } ${isCollapsed ? 'm-0' : 'mr-2.5'}`} />
+                                {!isCollapsed && <span className="truncate">{item.label}</span>}
+                            </Link>
+                        );
+                    })}
                 </nav>
 
                 <div className="p-2 border-t border-slate-50">
@@ -200,26 +217,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         >
                             <Menu className="w-4 h-4" />
                         </button>
-
-                        {/* Workspace Switcher */}
-                        {(user.role === 'admin_business' || user.role === 'admin_vet') && (
-                            <div className="hidden md:flex bg-slate-50/80 p-1 rounded-xl border border-slate-100/50">
-                                <button
-                                    onClick={() => switchWorkspace('clinical')}
-                                    className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!isPetshopMode ? 'bg-white text-purple-600 shadow-sm border border-purple-50' : 'text-slate-400 hover:text-slate-600'
-                                        }`}
-                                >
-                                    Clínica
-                                </button>
-                                <button
-                                    onClick={() => switchWorkspace('petshop')}
-                                    className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isPetshopMode ? 'bg-white text-orange-500 shadow-sm border border-orange-50' : 'text-slate-400 hover:text-slate-600'
-                                        }`}
-                                >
-                                    Petshop
-                                </button>
-                            </div>
-                        )}
+                        {/* Workspace Switcher HIDDEN for Fluidity Phase */}
                     </div>
 
                     <div className="hidden lg:block">

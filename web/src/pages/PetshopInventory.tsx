@@ -13,7 +13,8 @@ import {
     TrendingUp,
     DollarSign,
     Activity,
-    ClipboardList
+    ClipboardList,
+    History
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -30,6 +31,15 @@ interface Product {
     expiry: string | null;
 }
 
+interface StockMovement {
+    id: number;
+    type: string;
+    quantity: number;
+    reason: string | null;
+    createdAt: string;
+    user: { name: string } | null;
+}
+
 const PetshopInventory = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -37,6 +47,9 @@ const PetshopInventory = () => {
     const [categoryFilter, setCategoryFilter] = useState('Todos');
     const [showModal, setShowModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [historyData, setHistoryData] = useState<StockMovement[]>([]);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -138,6 +151,37 @@ const PetshopInventory = () => {
         const matchesCategory = categoryFilter === 'Todos' || p.category === categoryFilter;
         return matchesSearch && matchesCategory;
     });
+
+    const handleViewHistory = async (product: Product) => {
+        setSelectedProduct(product);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/products/${product.id}/history`);
+            if (res.ok) {
+                const data = await res.json();
+                setHistoryData(data);
+                setShowHistoryModal(true);
+            }
+        } catch (e) {
+            console.error('Error fetching history:', e);
+            alert('Erro ao carregar histórico');
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                fetchProducts();
+            } else {
+                alert('Erro ao excluir produto');
+            }
+        } catch (e) {
+            console.error('Error deleting product:', e);
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
@@ -306,12 +350,29 @@ const PetshopInventory = () => {
                                         </p>
                                     </td>
                                     <td className="px-8 py-6 text-right">
-                                        <button
-                                            onClick={() => openEdit(product)}
-                                            className="p-2.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                                        >
-                                            <Edit3 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => handleViewHistory(product)}
+                                                className="p-2.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                title="Histórico de Movimentação"
+                                            >
+                                                <History className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => openEdit(product)}
+                                                className="p-2.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                title="Editar"
+                                            >
+                                                <Edit3 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(product.id)}
+                                                className="p-2.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -428,6 +489,59 @@ const PetshopInventory = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* History Modal */}
+            {showHistoryModal && selectedProduct && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)} />
+                    <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+                        <header className="p-8 bg-slate-900 text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-[0.2em]">Histórico de Movimentação</h3>
+                                <p className="text-xs text-slate-400 mt-1">{selectedProduct.name}</p>
+                            </div>
+                            <button onClick={() => setShowHistoryModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-indigo-400" />
+                            </button>
+                        </header>
+                        <div className="p-8 max-h-[60vh] overflow-y-auto">
+                            {historyData.length === 0 ? (
+                                <p className="text-center text-slate-400 font-bold">Nenhum registro encontrado.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {historyData.map((item) => (
+                                        <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'ENTRY' ? 'bg-emerald-100 text-emerald-600' :
+                                                        item.type === 'EXIT' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                                    }`}>
+                                                    {item.type === 'ENTRY' ? <Plus className="w-5 h-5" /> : <TrendingUp className="w-5 h-5 rotate-180" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                                        {item.type === 'ENTRY' ? 'Entrada' : item.type === 'EXIT' ? 'Saída' : 'Ajuste'}
+                                                    </p>
+                                                    <p className="text-[10px] font-bold text-slate-400">
+                                                        {new Date(item.createdAt).toLocaleDateString()} às {new Date(item.createdAt).toLocaleTimeString()}
+                                                    </p>
+                                                    {item.user && <p className="text-[9px] text-indigo-400 font-bold mt-0.5">Por: {item.user.name}</p>}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={`text-lg font-black tabular-nums ${item.type === 'ENTRY' ? 'text-emerald-600' : 'text-red-600'
+                                                    }`}>
+                                                    {item.type === 'ENTRY' ? '+' : '-'}{item.quantity}
+                                                </p>
+                                                {item.reason && <p className="text-[10px] text-slate-400">{item.reason}</p>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

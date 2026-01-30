@@ -20,6 +20,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   auditLogs    AuditLog[]
+  stockMovements StockMovement[]
 }
 
 // Audit Log for tracking all changes
@@ -49,8 +50,12 @@ model Tutor {
   observations String?
   patients    Pet[]
   bills       Bill[]
+  appointments Appointment[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  deletedAt   DateTime? // Soft Delete
+
+  @@index([deletedAt])
 }
 
 model Pet {
@@ -72,6 +77,9 @@ model Pet {
   invoiceItems   InvoiceItem[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?       // Soft Delete
+
+  @@index([deletedAt])
 }
 
 model MedicalRecord {
@@ -123,8 +131,11 @@ model Appointment {
   petshopStatus String? // 'Aguardando', 'Banho', 'Secagem', 'Tosa', 'Finalizacao', 'Pronto'
   groomer       String? // Profissional responsável
 
-  petId     Int
-  pet       Pet      @relation(fields: [petId], references: [id])
+  petId     Int?
+  pet       Pet?     @relation(fields: [petId], references: [id])
+
+  tutorId   Int?
+  tutor     Tutor?   @relation(fields: [tutorId], references: [id])
   
   serviceId Int?
   serviceRef Service? @relation(fields: [serviceId], references: [id])
@@ -132,8 +143,12 @@ model Appointment {
   invoiceItem InvoiceItem?
 
   price     Float?
+  notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime? // Soft Delete
+
+  @@index([deletedAt])
 }
 
 model Product {
@@ -150,6 +165,22 @@ model Product {
   prescriptions Prescription[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?      // Soft Delete
+  stockMovements StockMovement[]
+
+  @@index([deletedAt])
+}
+
+model StockMovement {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  type      String   // 'ENTRY', 'EXIT', 'ADJUSTMENT'
+  quantity  Int
+  reason    String?
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 model Bill {
@@ -250,4 +281,5 @@ model Service {
   invoiceItems InvoiceItem[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  deletedAt   DateTime? // Soft Delete
 }

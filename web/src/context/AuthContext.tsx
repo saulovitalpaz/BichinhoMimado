@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const [workspace, setWorkspace] = useState<'clinical' | 'petshop'>('clinical');
+    const [workspace, setWorkspace] = useState<'clinical' | 'petshop'>('petshop');
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -52,13 +52,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
 
-            // Workspace logic based on new roles
-            if (userData.role === 'admin_business' || userData.role === 'admin_vet') {
-                setWorkspace('clinical');
-            } else if (userData.role === 'groomer') {
+            // Workspace logic based on new roles - FORCED PETSHOP DEFAULT FOR FLUIDITY PHASE
+            if (userData.role === 'groomer' || userData.role === 'admin_business' || userData.role === 'receptionist') {
                 setWorkspace('petshop');
             } else {
-                setWorkspace('clinical');
+                setWorkspace('petshop'); // Defaulting everyone to Petshop for now as requested
             }
 
             return true;

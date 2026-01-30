@@ -24,7 +24,10 @@ import {
     Briefcase,
     Store,
     Scissors,
-    Package
+    Package,
+    Tag,
+    Clock,
+    Banknote
 } from 'lucide-react';
 
 interface NavItem {
@@ -32,6 +35,7 @@ interface NavItem {
     icon: any;
     label: string;
     color: string;
+    roles?: string[];
 }
 
 
@@ -40,7 +44,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const navigate = useNavigate();
     const { user, logout, workspace, switchWorkspace } = useAuth();
     const [isOnline, setIsOnline] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 768); // Auto-collapse on mobile initially
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 768) setIsCollapsed(true);
+            else setIsCollapsed(false);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (!user) {
@@ -81,6 +94,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     const clinicNav: NavItem[] = [
         { path: '/', icon: Home, label: 'Painel', color: 'text-slate-400' },
+        { path: '/admin/services', icon: Tag, label: 'Serviços (Admin)', color: 'text-pink-500' },
         { path: '/clinical', icon: Stethoscope, label: 'Clínica', color: 'text-emerald-500' },
         { path: '/clientes', icon: Users, label: 'Clientes', color: 'text-blue-500' },
         { path: '/agenda', icon: Calendar, label: 'Agenda', color: 'text-indigo-500' },
@@ -95,7 +109,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         { path: '/vendas', icon: ShoppingBag, label: 'PDV', color: 'text-purple-500' },
         { path: '/agenda', icon: Calendar, label: 'Agenda', color: 'text-indigo-500' },
         { path: '/clientes', icon: Users, label: 'Clientes', color: 'text-blue-500' },
+        { path: '/clientes', icon: Users, label: 'Clientes', color: 'text-blue-500' },
         { path: '/estoque', icon: Package, label: 'Estoque', color: 'text-emerald-500' },
+        { label: 'Serviços (Admin)', path: '/admin/services', icon: Tag, color: 'text-pink-500', roles: ['admin_business', 'admin_vet'] },
+        { label: 'Financeiro', path: '/admin/finance', icon: Banknote, color: 'text-green-600', roles: ['admin_business'] }
     ];
 
     const filterNavByRole = (items: NavItem[]) => {
@@ -114,10 +131,19 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     return (
         <div className="flex h-screen bg-[#FDFDFD] text-slate-600 font-sans overflow-hidden">
+            {/* Mobile Overlay */}
+            {!isCollapsed && (
+                <div
+                    className="fixed inset-0 bg-slate-900/50 z-20 md:hidden backdrop-blur-sm transition-opacity"
+                    onClick={() => setIsCollapsed(true)}
+                />
+            )}
+
             {/* Sidebar */}
             <aside
-                className={`bg-white border-r border-slate-100 flex-shrink-0 flex flex-col z-30 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-16' : 'w-44 md:w-52'
-                    } ${isCollapsed ? '' : 'hidden md:flex'} md:flex`}
+                className={`fixed md:static inset-y-0 left-0 bg-white border-r border-slate-100 flex-shrink-0 flex flex-col z-30 transition-all duration-300 ease-in-out
+                    ${isCollapsed ? '-translate-x-full md:translate-x-0 md:w-16' : 'translate-x-0 w-64 md:w-52'}
+                `}
             >
                 {/* Brand Header */}
                 <div className={`flex items-center justify-center border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'h-14' : 'h-24'

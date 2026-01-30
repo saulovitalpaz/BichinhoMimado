@@ -45,6 +45,8 @@ model Tutor {
   phone       String?
   address     String?
   lgpdConsent Boolean  @default(false)
+  legacyId    String?  @unique // ID from Excel
+  observations String?
   patients    Pet[]
   bills       Bill[]
   createdAt   DateTime @default(now())
@@ -61,6 +63,8 @@ model Pet {
   birthDate      DateTime?
   microchip      String?
   tags           String?
+  legacyId       String?         // ID from Excel
+  observations   String?
   tutorId        Int
   tutor          Tutor           @relation(fields: [tutorId], references: [id])
   medicalRecords MedicalRecord[]
@@ -121,6 +125,12 @@ model Appointment {
 
   petId     Int
   pet       Pet      @relation(fields: [petId], references: [id])
+  
+  serviceId Int?
+  serviceRef Service? @relation(fields: [serviceId], references: [id])
+
+  invoiceItem InvoiceItem?
+
   price     Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -209,8 +219,16 @@ model InvoiceItem {
   description String
   amount      Float
   quantity    Int             @default(1)
+  
   petId       Int?
   pet         Pet?            @relation(fields: [petId], references: [id])
+  
+  serviceId   Int?
+  service     Service?        @relation(fields: [serviceId], references: [id])
+
+  appointmentId Int?          @unique
+  appointment Appointment?    @relation(fields: [appointmentId], references: [id])
+
   createdAt   DateTime        @default(now())
 }
 
@@ -218,4 +236,18 @@ enum InvoiceCategory {
   CLINICAL
   PETSHOP
   PDV
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  duration    Int      @default(30) // in minutes
+  category    String   // 'Petshop', 'Clinical'
+  active      Boolean  @default(true)
+  appointments Appointment[]
+  invoiceItems InvoiceItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

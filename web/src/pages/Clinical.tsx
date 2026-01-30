@@ -19,7 +19,8 @@ import {
     Trash2,
     User,
     Activity,
-    X
+    X,
+    Trash
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -29,10 +30,12 @@ interface Pet {
     breed: string;
     weight: number;
     tutor: { name: string };
+    allergies?: string;
 }
 
 const Clinical = () => {
     const [pets, setPets] = useState<Pet[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
     const [timeline, setTimeline] = useState<any[]>([]);
@@ -52,6 +55,9 @@ const Clinical = () => {
         treatment: '',
         prescriptions: [] as any[]
     });
+
+    // Prescription Entry State
+    const [prescItem, setPrescItem] = useState({ productId: '', name: '', dosage: '', frequency: '', duration: '' });
 
     // Load from LocalStorage on mount or pet selection
     useEffect(() => {
@@ -74,20 +80,22 @@ const Clinical = () => {
     }, [form, selectedPet, showWizard]);
 
     useEffect(() => {
-        const fetchPets = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/pets`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setPets(data);
-                }
+                const [resPets, resProducts] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/pets`),
+                    fetch(`${API_BASE_URL}/api/products`)
+                ]);
+
+                if (resPets.ok) setPets(await resPets.json());
+                if (resProducts.ok) setProducts(await resProducts.json());
             } catch (e) {
                 console.error(e);
             } finally {
                 setLoading(false);
             }
         };
-        fetchPets();
+        fetchData();
     }, []);
 
     const fetchTimeline = async (petId: number) => {
@@ -107,6 +115,25 @@ const Clinical = () => {
         fetchTimeline(pet.id);
     };
 
+    const handleAddPrescription = () => {
+        if (!prescItem.name) return;
+
+        setForm({
+            ...form,
+            prescriptions: [...form.prescriptions, {
+                ...prescItem,
+                productId: prescItem.productId ? parseInt(prescItem.productId) : null
+            }]
+        });
+        setPrescItem({ productId: '', name: '', dosage: '', frequency: '', duration: '' });
+    };
+
+    const handleRemovePrescription = (index: number) => {
+        const newPresc = [...form.prescriptions];
+        newPresc.splice(index, 1);
+        setForm({ ...form, prescriptions: newPresc });
+    };
+
     const handleSubmitRecord = async () => {
         if (!selectedPet) return;
         setIsSaving(true);
@@ -116,7 +143,7 @@ const Clinical = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     petId: selectedPet.id,
-                    veterinarian: 'Dr. Saulo', // Should come from context
+                    veterinarian: 'Dr. Saulo',
                     chiefComplaint: form.chiefComplaint,
                     soapData: {
                         subjective: form.subjective,
@@ -218,10 +245,12 @@ const Clinical = () => {
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tutor</span>
                             <span className="text-[11px] font-black text-slate-800 uppercase tabular-nums truncate max-w-[140px]">{selectedPet.tutor?.name}</span>
                         </div>
-                        <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-start gap-3">
-                            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                            <p className="text-[10px] text-red-800 font-bold leading-relaxed uppercase tracking-tight">Paciente com histórico de alergia à Dipirona.</p>
-                        </div>
+                        {selectedPet.allergies && (
+                            <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-start gap-3">
+                                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                <p className="text-[10px] text-red-800 font-bold leading-relaxed uppercase tracking-tight">{selectedPet.allergies}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </aside>
@@ -343,15 +372,73 @@ const Clinical = () => {
                                 </div>
                             </div>
 
-                            {/* Prescription Helper with Stock Indicator */}
+                            {/* Prescription Helper */}
                             <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
                                 <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Prescrição & Estoque</h4>
-                                <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-2xl">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        <span className="w-2 h-2 inline-block rounded-full bg-emerald-500 mr-2"></span>
-                                        Catálogo de Produtos em Breve
-                                    </p>
+                                <div className="flex gap-4 items-end mb-4">
+                                    <div className="flex-1 space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Medicamento / Produto</label>
+                                        <select
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs font-bold bg-white"
+                                            value={prescItem.productId}
+                                            onChange={e => {
+                                                const pid = e.target.value;
+                                                const prod = products.find(p => p.id.toString() === pid);
+                                                setPrescItem({
+                                                    ...prescItem,
+                                                    productId: pid,
+                                                    name: prod ? prod.name : ''
+                                                });
+                                            }}
+                                        >
+                                            <option value="">Selecione do Estoque (Opcional)</option>
+                                            {products.map(p => (
+                                                <option key={p.id} value={p.id}>{p.name} (Estoque: {p.stock})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex-[2] space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome (Personalizado ou Auto)</label>
+                                        <input
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs font-bold"
+                                            placeholder="Ex: Dipirona 500mg"
+                                            value={prescItem.name}
+                                            onChange={e => setPrescItem({ ...prescItem, name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Dose</label>
+                                        <input
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs font-bold"
+                                            placeholder="Ex: 5ml"
+                                            value={prescItem.dosage}
+                                            onChange={e => setPrescItem({ ...prescItem, dosage: e.target.value })}
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleAddPrescription}
+                                        className="h-[42px] px-6 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all mb-[1px]"
+                                    >
+                                        Adicionar
+                                    </button>
                                 </div>
+
+                                {form.prescriptions.length > 0 && (
+                                    <div className="space-y-2 mt-4">
+                                        {form.prescriptions.map((p, i) => (
+                                            <div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-[10px]">RX</div>
+                                                    <div>
+                                                        <p className="text-[11px] font-black text-slate-700">{p.name}</p>
+                                                        <p className="text-[9px] text-slate-400 font-bold">{p.dosage} - {p.frequency || '1x ao dia'} (Estoque: {p.productId ? 'Sim' : 'Não'})</p>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleRemovePrescription(i)} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash className="w-4 h-4" /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

@@ -14,6 +14,10 @@ import Agenda from './pages/Agenda'; // Keeping for reference, but Agenda nav wi
 import Vendas from './pages/Vendas';
 import Clientes from './pages/Clientes';
 import PetshopDashboard from './pages/PetshopDashboard';
+import PetshopInventory from './pages/PetshopInventory';
+import AdminServices from './pages/AdminServices';
+import PetshopQueue from './pages/PetshopQueue';
+import AdminFinance from './pages/AdminFinance';
 
 // Import New Modules
 import CalendarService from './modules/medical/CalendarService';
@@ -51,6 +55,24 @@ const AppContent = () => {
                 {/* Clinical / Medical Routes */}
                 <Route path="/clinical" element={<Clinical />} />
 
+                {/* Admin Routes */}
+                <Route
+                    path="/admin/services"
+                    element={
+                        <ProtectedRoute roles={['admin_business', 'admin_vet']}>
+                            <AdminServices />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/admin/finance"
+                    element={
+                        <ProtectedRoute roles={['admin_business']}>
+                            <AdminFinance />
+                        </ProtectedRoute>
+                    }
+                />
+
                 {/* Calendar Integration - Replaces old Agenda or accessed via specific route */}
                 <Route
                     path="/agenda"
@@ -73,9 +95,19 @@ const AppContent = () => {
 
                 {/* Other Routes */}
                 <Route path="/petshop" element={<Petshop />} />
+                <Route path="/petshop/monitor" element={<PetshopQueue />} />
                 <Route path="/internation" element={<Internation />} />
                 <Route path="/vendas" element={<Vendas />} />
                 <Route path="/clientes" element={<Clientes />} />
+                <Route path="/estoque" element={<PetshopInventory />} />
+                <Route
+                    path="/admin/services"
+                    element={
+                        <ProtectedRoute roles={['admin_business', 'admin_vet']}>
+                            <AdminServices />
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
         </Layout>
     );

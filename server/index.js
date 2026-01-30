@@ -89,19 +89,59 @@ app.get('/api/appointments', async (req, res) => {
 
 app.post('/api/appointments', async (req, res) => {
     try {
-        const { petId, date, type, service, veterinarianId } = req.body; // veterinarianId implies userId
+        const { petId, date, type, service, veterinarianId, groomer, petshopStatus, price } = req.body;
         const appointment = await prisma.appointment.create({
             data: {
                 petId,
                 date: new Date(date),
                 type,
                 service,
+                groomer,
+                petshopStatus,
+                price: parseFloat(price) || 0,
                 status: 'SCHEDULED'
             }
         });
         res.json(appointment);
     } catch (e) {
         res.status(500).json({ error: 'Failed to create appointment' });
+    }
+});
+
+app.get('/api/petshop/billable-services', async (req, res) => {
+    try {
+        const services = await prisma.appointment.findMany({
+            where: {
+                type: 'Petshop',
+                petshopStatus: 'Pronto',
+                // We consider it billable if it hasn't been completed/billed yet
+                status: 'SCHEDULED'
+            },
+            include: { pet: { include: { tutor: true } } }
+        });
+        res.json(services);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch billable services' });
+    }
+});
+
+app.put('/api/appointments/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { status, petshopStatus, groomer, date, service } = req.body;
+        const appointment = await prisma.appointment.update({
+            where: { id: parseInt(id) },
+            data: {
+                status,
+                petshopStatus,
+                groomer,
+                date: date ? new Date(date) : undefined,
+                service
+            }
+        });
+        res.json(appointment);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to update appointment' });
     }
 });
 
@@ -416,6 +456,274 @@ app.get('/api/pets/:id/timeline', async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Failed to fetch pet timeline' });
+    }
+});
+
+// === Petshop / Retail ===
+app.get('/api/products', async (req, res) => {
+    try {
+        const products = await prisma.product.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.json(products);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+app.post('/api/products', async (req, res) => {
+    try {
+        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry } = req.body;
+        const product = await prisma.product.create({
+            data: {
+                name,
+                description,
+                sku,
+                category,
+                stock: parseInt(stock) || 0,
+                minStock: parseInt(minStock) || 5,
+                costPrice: parseFloat(costPrice) || 0,
+                salePrice: parseFloat(salePrice) || 0,
+                expiry: expiry ? new Date(expiry) : null
+            }
+        });
+        res.json(product);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to create product' });
+    }
+});
+
+app.put('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry } = req.body;
+        const product = await prisma.product.update({
+            where: { id: parseInt(id) },
+            data: {
+                name,
+                description,
+                sku,
+                category,
+                stock: stock !== undefined ? parseInt(stock) : undefined,
+                minStock: minStock !== undefined ? parseInt(minStock) : undefined,
+                costPrice: costPrice !== undefined ? parseFloat(costPrice) : undefined,
+                salePrice: salePrice !== undefined ? parseFloat(salePrice) : undefined,
+                expiry: expiry ? new Date(expiry) : undefined
+            }
+        });
+        res.json(product);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to update product' });
+    }
+});
+
+app.post('/api/sales', async (req, res) => {
+    const { items, paymentMethod, tutorId, userId } = req.body;
+    // items: [{ productId, quantity, price, name }]
+
+    try {
+        const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        // 1. Create the Bill
+        const bill = await prisma.bill.create({
+            data: {
+                tutorId,
+                description: 'Venda Petshop / PDV',
+                amount: totalAmount,
+                dueDate: new Date(),
+                paidDate: new Date(), // Sales are usually paid instantly
+                status: 'PAID',
+                paymentMethod,
+                category: 'Retail',
+                items: {
+                    create: items.map(item => ({
+                        category: 'PDV',
+                        description: item.name,
+                        amount: item.price,
+                        quantity: item.quantity
+                    }))
+                }
+            }
+        });
+
+        // 2. Reduce Stock
+        for (const item of items) {
+            if (item.productId) {
+                await prisma.product.update({
+                    where: { id: item.productId },
+                    data: { stock: { decrement: item.quantity } }
+                });
+            }
+        }
+
+        if (userId) createAuditLog(userId, 'Bill', bill.id, 'CREATE', { items }, req.ip, req.headers['user-agent']);
+
+        res.json(bill);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to process sale' });
+    }
+});
+
+app.get('/api/petshop/stats', async (req, res) => {
+    try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const salesToday = await prisma.bill.findMany({
+            where: {
+                category: 'Retail',
+                createdAt: { gte: startOfDay },
+                status: 'PAID'
+            }
+        });
+
+        const totalRevenue = salesToday.reduce((sum, b) => sum + b.amount, 0);
+        const lowStockProducts = await prisma.product.findMany({
+            where: {
+                stock: { lte: prisma.product.fields.minStock }
+            },
+            take: 5
+        });
+
+        res.json({
+            revenueToday: totalRevenue,
+            salesCount: salesToday.length,
+            lowStock: lowStockProducts
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
+
+// === Tutors ===
+app.get('/api/tutors', async (req, res) => {
+    try {
+        const tutors = await prisma.tutor.findMany({
+            where: { deletedAt: null },
+            include: { pets: true },
+            orderBy: { name: 'asc' }
+        });
+        res.json(tutors);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch tutors' });
+    }
+});
+
+app.post('/api/tutors', async (req, res) => {
+    try {
+        const { name, cpf, phone, email, address, notes } = req.body;
+        const tutor = await prisma.tutor.create({
+            data: { name, cpf, phone, email, address, notes }
+        });
+        res.json(tutor);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to create tutor' });
+    }
+});
+
+app.put('/api/tutors/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { name, cpf, phone, email, address, notes } = req.body;
+        const tutor = await prisma.tutor.update({
+            where: { id: parseInt(id) },
+            data: { name, cpf, phone, email, address, notes }
+        });
+        res.json(tutor);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to update tutor' });
+    }
+});
+
+// === Pets ===
+app.get('/api/pets', async (req, res) => {
+    try {
+        const pets = await prisma.pet.findMany({
+            where: { deletedAt: null },
+            include: { tutor: true },
+            orderBy: { name: 'asc' }
+        });
+        res.json(pets);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch pets' });
+    }
+});
+
+app.post('/api/pets', async (req, res) => {
+    try {
+        const { name, species, breed, age, weight, gender, tutorId, notes, allergies } = req.body;
+        const pet = await prisma.pet.create({
+            data: {
+                name,
+                species,
+                breed,
+                age: parseInt(age) || 0,
+                weight: parseFloat(weight) || 0,
+                gender,
+                tutorId: parseInt(tutorId),
+                notes,
+                allergies
+            }
+        });
+        res.json(pet);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to create pet' });
+    }
+});
+
+
+// === Services ===
+app.get('/api/services', async (req, res) => {
+    try {
+        const services = await prisma.service.findMany({
+            where: { active: true },
+            orderBy: { name: 'asc' }
+        });
+        res.json(services);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch services' });
+    }
+});
+
+app.post('/api/services', async (req, res) => {
+    try {
+        const { name, description, price, duration, category } = req.body;
+        const service = await prisma.service.create({
+            data: {
+                name,
+                description,
+                price: parseFloat(price),
+                duration: parseInt(duration) || 30,
+                category
+            }
+        });
+        res.json(service);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to create service' });
+    }
+});
+
+app.put('/api/services/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { name, description, price, duration, category, active } = req.body;
+        const service = await prisma.service.update({
+            where: { id: parseInt(id) },
+            data: {
+                name, description, price: price ? parseFloat(price) : undefined,
+                duration: duration ? parseInt(duration) : undefined,
+                category, active
+            }
+        });
+        res.json(service);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to update service' });
     }
 });
 

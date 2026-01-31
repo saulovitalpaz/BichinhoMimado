@@ -17,6 +17,7 @@ import PetshopInventory from './pages/PetshopInventory';
 import AdminServices from './pages/AdminServices';
 import PetshopQueue from './pages/PetshopQueue';
 import AdminFinance from './pages/AdminFinance';
+import AdminFiscal from './pages/AdminFiscal';
 
 // Import New Modules
 import CalendarService from './modules/medical/CalendarService';
@@ -91,6 +92,14 @@ const AppContent = () => {
                     element={
                         <ProtectedRoute roles={['admin_business']}>
                             <AdminFinance />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/admin/fiscal"
+                    element={
+                        <ProtectedRoute roles={['admin_business']}>
+                            <AdminFiscal />
                         </ProtectedRoute>
                     }
                 />

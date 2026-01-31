@@ -190,16 +190,16 @@ const PetshopInventory = () => {
                     <h2 className="text-2xl font-black text-slate-800 tracking-tight">Estoque & Inventário</h2>
                     <p className="text-[11px] text-slate-400 font-medium uppercase tracking-widest mt-1">Gestão de produtos e controle de ruptura</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col md:flex-row gap-3">
                     <button
                         onClick={() => { setSearchTerm(''); setCategoryFilter('Todos'); }}
-                        className="bg-white text-slate-500 px-4 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] border border-slate-100 hover:bg-slate-50 transition-all shadow-sm"
+                        className="bg-white text-slate-500 px-4 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] border border-slate-100 hover:bg-slate-50 transition-all shadow-sm w-full md:w-auto"
                     >
                         Limpar Filtros
                     </button>
                     <button
                         onClick={() => { resetForm(); setEditingProduct(null); setShowModal(true); }}
-                        className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all flex items-center justify-center gap-2 active:scale-95"
+                        className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all flex items-center justify-center gap-2 active:scale-95 w-full md:w-auto"
                     >
                         <Plus className="w-4 h-4 text-emerald-400" />
                         Novo Produto
@@ -303,7 +303,65 @@ const PetshopInventory = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden">
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+                {filteredProducts.map(product => (
+                    <div key={product.id} className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300">
+                                    <Package className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight">{product.name}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 tracking-widest">SKU: {product.sku || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <span className="px-3 py-1 bg-slate-100/50 text-[9px] font-black text-slate-500 rounded-lg uppercase tracking-widest">
+                                {product.category || 'Geral'}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-50">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">Estoque</span>
+                                <div className="flex items-center space-x-2">
+                                    <span className={`text-lg font-black tabular-nums ${product.stock <= product.minStock ? 'text-red-500' : 'text-slate-600'}`}>
+                                        {product.stock}
+                                    </span>
+                                    {product.stock <= product.minStock && (
+                                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                                    )}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-50">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">Preço</span>
+                                <span className="text-lg font-black text-slate-800 tabular-nums">
+                                    R$ {product.salePrice.toFixed(2).replace('.', ',')}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handleViewHistory(product)}
+                                className="flex-1 py-3 text-slate-400 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all flex items-center justify-center font-bold text-[10px] uppercase tracking-wider"
+                            >
+                                <History className="w-4 h-4 mr-2" /> Histórico
+                            </button>
+                            <button
+                                onClick={() => openEdit(product)}
+                                className="flex-1 py-3 text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all flex items-center justify-center font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-slate-900/10"
+                            >
+                                <Edit3 className="w-4 h-4 mr-2" /> Editar
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
@@ -415,8 +473,12 @@ const PetshopInventory = () => {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">SKU / Código</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 flex justify-between">
+                                        SKU / Código
+                                        <span className="text-indigo-400 text-[8px]">Automático se vazio</span>
+                                    </label>
                                     <input
+                                        placeholder="Ex: PRD-001"
                                         className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-600/30 transition-all font-mono"
                                         value={formData.sku}
                                         onChange={e => setFormData({ ...formData, sku: e.target.value })}
@@ -471,6 +533,56 @@ const PetshopInventory = () => {
                                     />
                                 </div>
                             </div>
+                            <div className="border-t border-slate-100 relative my-6">
+                                <span className="absolute -top-3 left-0 bg-white pr-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+                                    Módulo Fiscal (NF-e)
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">NCM</label>
+                                    <input
+                                        placeholder="Ex: 9603.90.00"
+                                        className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-600/30 transition-all tabular-nums"
+                                        value={(formData as any).ncm || ''}
+                                        onChange={e => setFormData({ ...formData, ncm: e.target.value } as any)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">CFOP</label>
+                                    <input
+                                        placeholder="Ex: 5102"
+                                        className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-600/30 transition-all tabular-nums"
+                                        value={(formData as any).cfop || ''}
+                                        onChange={e => setFormData({ ...formData, cfop: e.target.value } as any)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Imposto Aprox.</label>
+                                    <div className="relative">
+                                        <span className="absolute left-6 top-4 text-slate-400 font-bold text-xs">%</span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="w-full pl-10 pr-6 py-4 bg-slate-50 border border-transparent rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-600/30 transition-all tabular-nums"
+                                            value={(formData as any).taxRate || ''}
+                                            onChange={e => setFormData({ ...formData, taxRate: parseFloat(e.target.value) } as any)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Validade</label>
+                                <input
+                                    type="date"
+                                    className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-600/30 transition-all cursor-pointer"
+                                    value={formData.expiry ? new Date(formData.expiry).toISOString().split('T')[0] : ''}
+                                    onChange={e => setFormData({ ...formData, expiry: e.target.value })}
+                                />
+                            </div>
+
 
                             <div className="flex gap-4 pt-4">
                                 <button
@@ -494,58 +606,60 @@ const PetshopInventory = () => {
             )}
 
             {/* History Modal */}
-            {showHistoryModal && selectedProduct && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)} />
-                    <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-                        <header className="p-8 bg-slate-900 text-white flex justify-between items-center">
-                            <div>
-                                <h3 className="text-sm font-black uppercase tracking-[0.2em]">Histórico de Movimentação</h3>
-                                <p className="text-xs text-slate-400 mt-1">{selectedProduct.name}</p>
-                            </div>
-                            <button onClick={() => setShowHistoryModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                                <X className="w-5 h-5 text-indigo-400" />
-                            </button>
-                        </header>
-                        <div className="p-8 max-h-[60vh] overflow-y-auto">
-                            {historyData.length === 0 ? (
-                                <p className="text-center text-slate-400 font-bold">Nenhum registro encontrado.</p>
-                            ) : (
-                                <div className="space-y-4">
-                                    {historyData.map((item) => (
-                                        <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'ENTRY' ? 'bg-emerald-100 text-emerald-600' :
-                                                        item.type === 'EXIT' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                                                    }`}>
-                                                    {item.type === 'ENTRY' ? <Plus className="w-5 h-5" /> : <TrendingUp className="w-5 h-5 rotate-180" />}
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-black uppercase tracking-wider text-slate-700">
-                                                        {item.type === 'ENTRY' ? 'Entrada' : item.type === 'EXIT' ? 'Saída' : 'Ajuste'}
-                                                    </p>
-                                                    <p className="text-[10px] font-bold text-slate-400">
-                                                        {new Date(item.createdAt).toLocaleDateString()} às {new Date(item.createdAt).toLocaleTimeString()}
-                                                    </p>
-                                                    {item.user && <p className="text-[9px] text-indigo-400 font-bold mt-0.5">Por: {item.user.name}</p>}
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className={`text-lg font-black tabular-nums ${item.type === 'ENTRY' ? 'text-emerald-600' : 'text-red-600'
-                                                    }`}>
-                                                    {item.type === 'ENTRY' ? '+' : '-'}{item.quantity}
-                                                </p>
-                                                {item.reason && <p className="text-[10px] text-slate-400">{item.reason}</p>}
-                                            </div>
-                                        </div>
-                                    ))}
+            {
+                showHistoryModal && selectedProduct && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)} />
+                        <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+                            <header className="p-8 bg-slate-900 text-white flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-sm font-black uppercase tracking-[0.2em]">Histórico de Movimentação</h3>
+                                    <p className="text-xs text-slate-400 mt-1">{selectedProduct.name}</p>
                                 </div>
-                            )}
+                                <button onClick={() => setShowHistoryModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-indigo-400" />
+                                </button>
+                            </header>
+                            <div className="p-8 max-h-[60vh] overflow-y-auto">
+                                {historyData.length === 0 ? (
+                                    <p className="text-center text-slate-400 font-bold">Nenhum registro encontrado.</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {historyData.map((item) => (
+                                            <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'ENTRY' ? 'bg-emerald-100 text-emerald-600' :
+                                                        item.type === 'EXIT' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                                        }`}>
+                                                        {item.type === 'ENTRY' ? <Plus className="w-5 h-5" /> : <TrendingUp className="w-5 h-5 rotate-180" />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                                            {item.type === 'ENTRY' ? 'Entrada' : item.type === 'EXIT' ? 'Saída' : 'Ajuste'}
+                                                        </p>
+                                                        <p className="text-[10px] font-bold text-slate-400">
+                                                            {new Date(item.createdAt).toLocaleDateString()} às {new Date(item.createdAt).toLocaleTimeString()}
+                                                        </p>
+                                                        {item.user && <p className="text-[9px] text-indigo-400 font-bold mt-0.5">Por: {item.user.name}</p>}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`text-lg font-black tabular-nums ${item.type === 'ENTRY' ? 'text-emerald-600' : 'text-red-600'
+                                                        }`}>
+                                                        {item.type === 'ENTRY' ? '+' : '-'}{item.quantity}
+                                                    </p>
+                                                    {item.reason && <p className="text-[10px] text-slate-400">{item.reason}</p>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

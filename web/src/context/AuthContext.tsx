@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 // import { loginUser } from '../utils/api'; // Commented out until API is ready
 
 import { API_BASE_URL } from '../config';
@@ -21,10 +22,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [workspace, setWorkspace] = useState<'clinical' | 'petshop'>('petshop');
+    const navigate = useNavigate();
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -35,6 +38,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     const login = async (email: string, password: string) => {
+        // ... existing login logic
         setLoading(true);
         try {
             const res = await fetch(`${API_BASE_URL}/api/login`, {
@@ -72,6 +76,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
         localStorage.removeItem('user');
         setWorkspace('clinical');
+        navigate('/login');
     };
 
     const switchWorkspace = (mode: 'clinical' | 'petshop') => {

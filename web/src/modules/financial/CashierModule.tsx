@@ -78,9 +78,10 @@ const CashierModule = () => {
     };
 
     const filteredServices = pendingServices.filter(svc =>
-        (svc.pet?.tutor?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            svc.tutor?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (svc.pet?.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        (svc.pet?.tutor?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (svc.tutor?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (svc.pet?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (svc.service?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
     const openCheckout = (serviceItem: any) => {
@@ -142,13 +143,8 @@ const CashierModule = () => {
 
             if (res.ok) {
                 // Determine if we need to close the appointment
-                if (checkoutData.type === 'SERVICE') {
-                    await fetch(`${API_BASE_URL}/api/appointments/${checkoutData.data.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: 'COMPLETED' })
-                    });
-                }
+                // Success (Status is auto-updated by backend now)
+                console.log('Sale completed');
 
                 setCheckoutData(null);
                 setCart([]);
@@ -272,7 +268,7 @@ const CashierModule = () => {
             {checkoutData && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setCheckoutData(null)} />
-                    <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-auto animate-in zoom-in-95 duration-200">
+                    <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl relative flex flex-col md:flex-row h-[80vh] md:h-auto animate-in zoom-in-95 duration-200">
                         {/* Left: Cart */}
                         <div className="flex-1 bg-slate-50 p-8 flex flex-col border-r border-slate-100">
                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-6">Comanda</h3>
@@ -296,22 +292,39 @@ const CashierModule = () => {
 
                             <div className="mt-4 pt-4 border-t border-slate-200/50">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Adicionar Produtos</p>
-                                <div className="relative">
+                                <div className="relative z-50">
                                     <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                                     <input
                                         className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-bold outline-none focus:border-indigo-500 transition-colors"
                                         placeholder="Buscar produto..."
                                         value={productSearch}
                                         onChange={e => setProductSearch(e.target.value)}
+                                        autoComplete="off"
                                     />
-                                    {productSearch.length > 1 && (
-                                        <div className="absolute bottom-full mb-2 left-0 right-0 bg-white border border-slate-100 rounded-xl shadow-xl z-20 max-h-40 overflow-y-auto">
-                                            {products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
-                                                <button key={p.id} onClick={() => addProductToCart(p)} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-[11px] font-bold text-slate-700 flex justify-between">
-                                                    <span>{p.name}</span>
-                                                    <span>R$ {p.salePrice.toFixed(2)}</span>
+                                    {productSearch.length > 0 && (
+                                        <div className="absolute top-full mt-2 left-0 right-0 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto z-[60]">
+                                            {products.filter(p =>
+                                                p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                                (p.sku && p.sku.toLowerCase().includes(productSearch.toLowerCase()))
+                                            ).map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    onClick={() => addProductToCart(p)}
+                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 text-[11px] font-bold text-slate-700 flex justify-between border-b border-slate-50 last:border-0 transition-colors"
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span>{p.name}</span>
+                                                        {p.sku && <span className="text-[8px] text-slate-400 font-black">{p.sku}</span>}
+                                                    </div>
+                                                    <span className="text-indigo-600">R$ {p.salePrice.toFixed(2)}</span>
                                                 </button>
                                             ))}
+                                            {products.filter(p =>
+                                                p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                                (p.sku && p.sku.toLowerCase().includes(productSearch.toLowerCase()))
+                                            ).length === 0 && (
+                                                    <div className="px-4 py-3 text-[10px] text-slate-400 text-center">Nenhum produto encontrado</div>
+                                                )}
                                         </div>
                                     )}
                                 </div>

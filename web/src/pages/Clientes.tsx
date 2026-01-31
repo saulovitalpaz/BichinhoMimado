@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Plus, Filter, MoreHorizontal, Mail, Phone, MapPin, ChevronRight, Edit2, X, Save, Dog, History, ShoppingBag } from 'lucide-react';
+import { Users, Search, Plus, Filter, MoreHorizontal, Mail, Phone, MapPin, ChevronRight, Edit2, X, Save, Dog, History, ShoppingBag, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Clientes = () => {
@@ -18,7 +18,7 @@ const Clientes = () => {
     // Form Stats
     const [step, setStep] = useState(1); // 1: Tutor, 2: Pet
     const [tutorForm, setTutorForm] = useState({ name: '', cpf: '', phone: '', email: '', address: '' });
-    const [petForm, setPetForm] = useState({ name: '', species: 'Canino', breed: '', age: '', weight: '', gender: 'Macho' });
+    const [petForm, setPetForm] = useState({ name: '', species: 'Canino', breed: '', age: '', weight: '', gender: 'Macho', tutorId: '' });
 
     useEffect(() => {
         fetchTutors();
@@ -141,6 +141,32 @@ const Clientes = () => {
         }
     };
 
+    const handleDeleteTutor = async (id: number) => {
+        if (!window.confirm('Tem certeza que deseja excluir este cliente?')) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/tutors/${id}`, { method: 'DELETE' });
+            if (res.ok) fetchTutors();
+        } catch (e) { console.error(e); }
+    };
+
+    const handleDeletePet = async (id: number) => {
+        if (!window.confirm('Tem certeza que deseja excluir este pet?')) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/pets/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                // Refresh logic depending on view
+                fetchTutors();
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const handleAddPet = (tutor: any) => {
+        setEditingTutor(tutor);
+        setStep(2); // Jump directly to Pet details
+        setPetForm({ ...petForm, tutorId: tutor.id.toString() });
+        setShowModal(true);
+    };
+
     const handleSavePet = async () => {
         if (!editingTutor) return;
 
@@ -261,10 +287,25 @@ const Clientes = () => {
                                                 <History className="w-4 h-4" />
                                             </button>
                                             <button
+                                                onClick={() => handleAddPet(tutor)}
+                                                className="p-2 hover:bg-white rounded-xl shadow-sm border border-slate-100/50 text-slate-400 hover:text-emerald-600 transition-all mr-2"
+                                                title="Adicionar Pet"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                            <button
                                                 onClick={() => handleOpenModal(tutor)}
                                                 className="p-2 hover:bg-white rounded-xl shadow-sm border border-slate-100/50 text-slate-400 hover:text-indigo-600 transition-all"
+                                                title="Editar Cliente"
                                             >
                                                 <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteTutor(tutor.id)}
+                                                className="p-2 hover:bg-white rounded-xl shadow-sm border border-slate-100/50 text-slate-400 hover:text-red-600 transition-all ml-2"
+                                                title="Excluir Cliente"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </td>

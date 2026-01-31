@@ -118,7 +118,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         { path: '/clientes', icon: Users, label: 'Clientes & Pets', color: 'text-blue-500' },
         { path: '/estoque', icon: Package, label: 'Estoque / Produtos', color: 'text-emerald-500' },
         { path: '/admin/services', icon: Tag, label: 'Serviços / Preços', color: 'text-pink-500', roles: ['admin_business', 'admin_vet'] },
-        { label: 'Relatórios', path: '/admin/finance', icon: Grid, color: 'text-green-600', roles: ['admin_business'] }
+        { label: 'Relatórios', path: '/admin/finance', icon: Grid, color: 'text-green-600', roles: ['admin_business'] },
+        { label: 'Config Fiscal', path: '/admin/fiscal', icon: Settings, color: 'text-slate-600', roles: ['admin_business'] }
     ];
 
     const filterNavByRole = (items: NavItem[]) => {
@@ -139,33 +140,39 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
         <div className="flex h-screen bg-[#FDFDFD] text-slate-600 font-sans overflow-hidden">
             {/* Mobile Overlay */}
-            {!isCollapsed && (
-                <div
-                    className="fixed inset-0 bg-slate-900/50 z-20 md:hidden backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsCollapsed(true)}
-                />
-            )}
+            <div
+                className={`fixed inset-0 bg-slate-900/60 z-40 transition-opacity duration-300 md:hidden backdrop-blur-sm
+                    ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}
+                `}
+                onClick={() => setIsCollapsed(true)}
+            />
 
             {/* Sidebar */}
             <aside
-                className={`fixed md:static inset-y-0 left-0 bg-white border-r border-slate-100 flex-shrink-0 flex flex-col z-30 transition-all duration-300 ease-in-out
-                    ${isCollapsed ? '-translate-x-full md:translate-x-0 md:w-16' : 'translate-x-0 w-64 md:w-52'}
+                className={`fixed md:static inset-y-0 left-0 bg-white border-r border-slate-100 flex-shrink-0 flex flex-col z-50 transition-transform duration-300 ease-out shadow-2xl md:shadow-none
+                    ${isCollapsed ? '-translate-x-full md:translate-x-0 md:w-16' : 'translate-x-0 w-[85vw] max-w-[300px] md:w-52'}
                 `}
             >
                 {/* Brand Header */}
-                <div className={`flex items-center justify-center border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'h-14' : 'h-24'
-                    }`}>
-                    <div className={`relative transition-all duration-300 ${isCollapsed ? 'w-10 h-10' : 'w-36 h-18'}`}>
+                <div className={`flex items-center justify-between px-6 border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'md:h-14' : 'h-20 md:h-24'}`}>
+                    <div className={`relative transition-all duration-300 ${isCollapsed ? 'md:w-10 md:h-10' : 'w-32 h-12'}`}>
                         <img src="/Logo.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
+                    {/* Mobile Close Button */}
+                    <button
+                        onClick={() => setIsCollapsed(true)}
+                        className="md:hidden p-2 -mr-2 text-slate-400 hover:text-slate-600 active:scale-95 transition-transform"
+                    >
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
                 </div>
 
-                <nav className="mt-3 flex-1 overflow-y-auto px-2 space-y-0.5 custom-scrollbar">
+                <nav className="mt-4 flex-1 overflow-y-auto px-4 space-y-1 custom-scrollbar">
                     {navItems.map((item, idx) => {
                         if (item.type === 'header') {
                             return !isCollapsed && (
-                                <div key={`header-${idx}`} className="px-4 py-4 first:pt-2">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-350">{item.label}</span>
+                                <div key={`header-${idx}`} className="px-2 py-4 mt-2 first:mt-0">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-350 block">{item.label}</span>
                                 </div>
                             );
                         }
@@ -174,33 +181,34 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                className={`flex items-center rounded-xl text-[11px] font-semibold transition-all duration-200 group ${location.pathname === item.path
-                                    ? `${theme.primaryBg} ${theme.primary}`
-                                    : 'hover:bg-slate-50/80 text-slate-400 hover:text-slate-600'
-                                    } ${isCollapsed ? 'justify-center py-2.5 px-0 mb-1' : 'px-3 py-2'}`}
+                                onClick={() => window.innerWidth < 768 && setIsCollapsed(true)}
+                                className={`flex items-center rounded-2xl text-[13px] md:text-[11px] font-bold transition-all duration-200 group relative overflow-hidden ${location.pathname === item.path
+                                    ? `${theme.primaryBg} ${theme.primary} shadow-sm`
+                                    : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'
+                                    } ${isCollapsed ? 'justify-center py-3 px-0 mb-2' : 'px-4 py-3.5 md:py-2.5'}`}
                             >
-                                <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform ${location.pathname === item.path ? theme.primary : 'opacity-70 group-hover:opacity-100'
-                                    } ${isCollapsed ? 'm-0' : 'mr-2.5'}`} />
+                                <item.icon className={`w-5 h-5 md:w-4 md:h-4 flex-shrink-0 transition-transform ${location.pathname === item.path ? theme.primary : 'opacity-60 group-hover:opacity-100'
+                                    } ${isCollapsed ? 'm-0' : 'mr-4 md:mr-3'}`} />
                                 {!isCollapsed && <span className="truncate">{item.label}</span>}
                             </Link>
                         );
                     })}
                 </nav>
 
-                <div className="p-2 border-t border-slate-50">
+                <div className="p-4 border-t border-slate-50 bg-slate-50/30">
                     <button
                         onClick={logout}
-                        className={`flex items-center text-[11px] font-bold text-slate-350 hover:text-red-500 transition-all w-full rounded-xl hover:bg-red-50/50 ${isCollapsed ? 'justify-center py-2.5' : 'px-3 py-2'
+                        className={`flex items-center text-[11px] font-bold text-slate-400 hover:text-red-500 transition-all w-full rounded-2xl hover:bg-red-50 ${isCollapsed ? 'justify-center py-3' : 'px-4 py-3'
                             }`}
                     >
-                        <LogOut className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? '' : 'mr-2.5'}`} />
-                        {!isCollapsed && <span>Sair</span>}
+                        <LogOut className={`w-5 h-5 md:w-4 md:h-4 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
+                        {!isCollapsed && <span>Sair com segurança</span>}
                     </button>
                     {!isCollapsed && (
-                        <div className="mt-2 flex items-center justify-center">
-                            <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-red-400'} mr-2 shadow-sm animate-pulse`}></div>
-                            <span className="text-[9px] text-slate-300 font-bold tracking-widest uppercase">
-                                {isOnline ? 'Conectado' : 'Offline'}
+                        <div className="mt-4 flex items-center justify-center pt-2">
+                            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-red-400'} mr-2 shadow-sm animate-pulse`}></div>
+                            <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">
+                                {isOnline ? 'Online' : 'Offline'}
                             </span>
                         </div>
                     )}

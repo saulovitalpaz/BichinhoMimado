@@ -45,6 +45,11 @@ model Tutor {
   email       String?
   phone       String?
   address     String?
+  number      String?
+  neighborhood String?
+  city        String?
+  state       String?
+  zipCode     String?
   lgpdConsent Boolean  @default(false)
   legacyId    String?  @unique // ID from Excel
   observations String?
@@ -162,6 +167,12 @@ model Product {
   costPrice     Float?
   salePrice     Float
   expiry        DateTime?
+  
+  // Fiscal Data
+  ncm           String?        // Nomenclatura Comum do Mercosul
+  cfop          String?        // Código Fiscal de Operações
+  taxRate       Float?         // Alíquota aproximada impostos
+  
   prescriptions Prescription[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -249,6 +260,7 @@ model InvoiceItem {
   category    InvoiceCategory
   description String
   amount      Float
+  costAmount  Float?          // Snapshot of cost at time of sale
   quantity    Int             @default(1)
   
   petId       Int?
@@ -263,6 +275,27 @@ model InvoiceItem {
   createdAt   DateTime        @default(now())
 }
 
+model Company {
+  id          Int      @id @default(autoincrement())
+  name        String
+  tradeName   String?  // Nome Fantasia
+  cnpj        String   @unique
+  ie          String?  // Inscrição Estadual
+  crt         String?  // Código de Regime Tributário (1=Simples, 3=Normal)
+  
+  address     String?
+  number      String?
+  neighborhood String?
+  city        String?
+  state       String?  // UF (2 chars)
+  zipCode     String?
+  phone       String?
+  email       String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 enum InvoiceCategory {
   CLINICAL
   PETSHOP
@@ -273,10 +306,16 @@ model Service {
   id          Int      @id @default(autoincrement())
   name        String
   description String?
+  sku         String?  @unique
   price       Float
   duration    Int      @default(30) // in minutes
   category    String   // 'Petshop', 'Clinical'
   active      Boolean  @default(true)
+  
+  // Fiscal Data
+  iss         Float?   // Alíquota ISS
+  taxRate     Float?   // Alíquota aproximada
+  
   appointments Appointment[]
   invoiceItems InvoiceItem[]
   createdAt   DateTime @default(now())

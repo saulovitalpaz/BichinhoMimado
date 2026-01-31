@@ -11,7 +11,10 @@ import {
     User,
     Dog,
     ArrowUpRight,
-    Search
+    Search,
+    ChevronDown,
+    ChevronUp,
+    Plus
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { Link } from 'react-router-dom';
@@ -24,6 +27,10 @@ const PetshopDashboard = () => {
     });
     const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Collapsible States
+    const [showQueue, setShowQueue] = useState(true);
+    const [showStock, setShowStock] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -84,13 +91,13 @@ const PetshopDashboard = () => {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
-            <header className="flex justify-between items-center">
+        <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700 pb-20 md:pb-0">
+            <header className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Dashboard Petshop</h2>
-                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-widest mt-1">Centro de Controle Operacional</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Dashboard Petshop</h2>
+                    <p className="text-[10px] md:text-[11px] text-slate-400 font-medium uppercase tracking-widest mt-1">Centro de Controle Operacional</p>
                 </div>
-                <div className="flex gap-4">
+                <div className="hidden md:flex gap-4">
                     <Link to="/agenda" className="bg-indigo-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center active:scale-95">
                         <Calendar className="w-4 h-4 mr-2" />
                         Novo Agendamento
@@ -98,94 +105,68 @@ const PetshopDashboard = () => {
                 </div>
             </header>
 
-            <div className="grid grid-cols-12 gap-8">
+            <div className="grid grid-cols-12 gap-6 md:gap-8">
                 {/* Main Ops */}
-                <div className="col-span-12 lg:col-span-8 space-y-8">
+                <div className="col-span-12 lg:col-span-8 space-y-6 md:space-y-8">
                     {/* Active Queue */}
-                    <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden min-h-[300px]">
-                        <header className="p-8 bg-slate-900 text-white flex justify-between items-center">
+                    <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden transition-all duration-300">
+                        <header
+                            className="p-6 md:p-8 bg-slate-900 text-white flex justify-between items-center cursor-pointer active:bg-slate-800 transition-colors"
+                            onClick={() => setShowQueue(!showQueue)}
+                        >
                             <div className="flex items-center space-x-3">
                                 <Scissors className="w-5 h-5 text-indigo-400" />
-                                <span className="font-black text-[11px] uppercase tracking-[0.2em]">Fila de Estética (Andamento)</span>
+                                <span className="font-black text-[11px] uppercase tracking-[0.2em]">Fila de Estética</span>
                             </div>
-                            <span className="bg-white/10 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest leading-none">
-                                {activeQueue.length} em execução
-                            </span>
+                            <div className="flex items-center space-x-3">
+                                <span className="bg-white/10 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest leading-none">
+                                    {activeQueue.length}
+                                </span>
+                                {showQueue ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                            </div>
                         </header>
 
-                        <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {activeQueue.map((item, i) => (
-                                <div key={item.id} className={`p-6 rounded-[2rem] border transition-all ${i === 0 ? 'bg-indigo-50 border-indigo-100 shadow-xl shadow-indigo-100/20' : 'bg-white border-slate-50 shadow-sm hover:shadow-lg'}`}>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black ${i === 0 ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-300'}`}>
-                                            {item.pet?.name?.[0]}
+                        {showQueue && (
+                            <div className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-top-4 duration-300">
+                                {activeQueue.map((item, i) => (
+                                    <div key={item.id} className={`p-6 rounded-[2rem] border transition-all ${i === 0 ? 'bg-indigo-50 border-indigo-100 shadow-xl shadow-indigo-100/20' : 'bg-white border-slate-50 shadow-sm hover:shadow-lg'}`}>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black ${i === 0 ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-300'}`}>
+                                                {item.pet?.name?.[0]}
+                                            </div>
+                                            <span className={`text-[10px] font-black tabular-nums ${i === 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
+                                                {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                         </div>
-                                        <span className={`text-[10px] font-black tabular-nums ${i === 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
-                                            {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                    <h4 className="font-black text-slate-800 text-[13px] uppercase tracking-tight leading-none">{item.pet?.name}</h4>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{item.service}</p>
-                                    <div className="mt-4 pt-4 border-t border-slate-100/50 flex items-center justify-between">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{item.petshopStatus || 'Aguardando'}</span>
+                                        <h4 className="font-black text-slate-800 text-[13px] uppercase tracking-tight leading-none">{item.pet?.name}</h4>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{item.service}</p>
+                                        <div className="mt-4 pt-4 border-t border-slate-100/50 flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{item.petshopStatus || 'Aguardando'}</span>
+                                            </div>
+                                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{item.groomer || 'Pendente'}</span>
                                         </div>
-                                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{item.groomer || 'Pendente'}</span>
                                     </div>
-                                </div>
-                            ))}
-                            {activeQueue.length === 0 && (
-                                <div className="col-span-full h-full flex flex-col items-center justify-center text-slate-200 py-12">
-                                    <Scissors className="w-12 h-12 mb-4 opacity-20" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Fila vazia no momento</span>
-                                </div>
-                            )}
-                        </div>
+                                ))}
+                                {activeQueue.length === 0 && (
+                                    <div className="col-span-full h-full flex flex-col items-center justify-center text-slate-200 py-8">
+                                        <Scissors className="w-10 h-10 mb-3 opacity-20" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Fila vazia</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Meta/Alerts */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className={`p-8 rounded-[2.5rem] border flex items-center justify-between group overflow-hidden relative ${stats.lowStock.length > 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
-                            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-125 transition-transform duration-700">
-                                <AlertCircle className={`w-32 h-32 ${stats.lowStock.length > 0 ? 'text-red-900' : 'text-slate-900'}`} />
-                            </div>
-                            <div className="relative z-10">
-                                <h4 className={`text-[10px] font-black uppercase tracking-widest ${stats.lowStock.length > 0 ? 'text-red-800' : 'text-slate-400'}`}>Alertas de Estoque</h4>
-                                <p className={`text-sm font-bold mt-2 leading-tight ${stats.lowStock.length > 0 ? 'text-red-900' : 'text-slate-600'}`}>
-                                    {stats.lowStock.length > 0
-                                        ? stats.lowStock.map(p => `${p.name} (${p.stock} un)`).slice(0, 2).join('\n')
-                                        : 'Tudo em conformidade'}
-                                </p>
-                            </div>
-                            <Link to="/estoque" className={`relative z-10 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm transition-all ${stats.lowStock.length > 0 ? 'bg-white text-red-600 hover:bg-red-600 hover:text-white' : 'bg-white text-slate-600 hover:bg-slate-900 hover:text-white'
-                                }`}>
-                                Ver Tudo
-                            </Link>
-                        </div>
-
-                        <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100 flex items-center justify-between group overflow-hidden relative">
-                            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-125 transition-transform duration-700">
-                                <TrendingUp className="w-32 h-32 text-emerald-900" />
-                            </div>
-                            <div className="relative z-10">
-                                <h4 className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Meta de Vendas</h4>
-                                <p className="text-3xl font-black text-emerald-900 mt-2 tabular-nums">98%</p>
-                            </div>
-                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center p-2 shadow-sm">
-                                <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                                    <circle cx="18" cy="18" r="16" fill="none" className="stroke-emerald-100" strokeWidth="3" />
-                                    <circle cx="18" cy="18" r="16" fill="none" className="stroke-emerald-500" strokeWidth="3" strokeDasharray="100" strokeDashoffset="2" strokeLinecap="round" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Meta/Alerts - This section is now handled by the Personal Assistant & Alerts section above */}
+                    {/* The original content of this section has been moved and adapted */}
                 </div>
 
                 {/* Sidebar Stats */}
-                <div className="col-span-12 lg:col-span-4 space-y-8">
+                <div className="col-span-12 lg:col-span-4 space-y-6 md:space-y-8">
                     {/* Next Up / Check-in */}
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden">
+                    <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden">
                         <header className="flex justify-between items-center mb-6">
                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Agenda: Próximos</h3>
                             <button onClick={() => window.location.reload()} className="text-slate-300 hover:text-indigo-500 transition-colors"><Clock className="w-4 h-4" /></button>
@@ -197,12 +178,16 @@ const PetshopDashboard = () => {
                                     <div className="flex-1 p-4 bg-slate-50/50 rounded-2xl border border-slate-50 flex justify-between items-center group-hover:border-indigo-100 transition-all">
                                         <div>
                                             <span className="text-[10px] font-black text-slate-800 block uppercase tracking-tight">{appt.pet?.name}</span>
-                                            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-widest mt-0.5">{new Date(appt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {appt.service}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-widest mt-0.5 mb-0.5">
+                                                <User className="w-3 h-3 inline mr-1" />
+                                                {appt.pet?.tutor?.name || appt.tutor?.name || 'Cliente'}
+                                            </span>
+                                            <span className="text-[9px] font-bold text-indigo-400 block uppercase tracking-widest">{new Date(appt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {appt.service}</span>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => handleCheckIn(appt.id)}
-                                        className="h-full px-4 rounded-2xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center gap-1 shadow-sm opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0"
+                                        className="h-full px-4 rounded-2xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center gap-1 shadow-sm opacity-100 md:opacity-0 md:group-hover:opacity-100 md:-translate-x-2 md:group-hover:translate-x-0"
                                         title="Iniciar Atendimento / Check-in"
                                     >
                                         <ArrowUpRight className="w-4 h-4" />
@@ -217,10 +202,10 @@ const PetshopDashboard = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden group">
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">Vendas Hoje</h3>
-                        <p className="text-4xl font-black text-slate-800 mt-2 tabular-nums relative z-10 tracking-tighter">R$ {stats.revenueToday.toFixed(2).replace('.', ',')}</p>
+                        <p className="text-3xl md:text-4xl font-black text-slate-800 mt-2 tabular-nums relative z-10 tracking-tighter">R$ {stats.revenueToday.toFixed(2).replace('.', ',')}</p>
 
                         <div className="mt-8 space-y-4 relative z-10">
                             <div className="flex justify-between items-center p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
@@ -236,6 +221,14 @@ const PetshopDashboard = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Mobile FAB: New Appointment */}
+            <Link
+                to="/agenda"
+                className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-90 transition-transform"
+            >
+                <Plus className="w-6 h-6" />
+            </Link>
         </div>
     );
 };

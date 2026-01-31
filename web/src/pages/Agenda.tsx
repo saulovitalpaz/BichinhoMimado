@@ -14,10 +14,11 @@ import {
     Clock,
     CheckCircle
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 
 const Agenda = () => {
+    const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -142,7 +143,6 @@ const Agenda = () => {
                 petshopStatus: 'Aguardando',
                 status: 'SCHEDULED',
                 price: form.price,
-                price: form.price,
                 notes: isProvisional ? `PROVISÓRIO: ${form.tempPetName} (Tutor: ${form.tempTutorName})` : '',
                 // If provisional, try to find tutorId from selected result if possible or null
                 // Note: In handleSelectResult if type is tutor we should save the ID.
@@ -173,10 +173,66 @@ const Agenda = () => {
         }
     };
 
+    const handleCallNow = async (appointment: any) => {
+        if (!appointment) return;
+        try {
+            // Update status to likely trigger "In Progress" or "Banho" for the Queue
+            // If it's Petshop, move to 'Banho' if it was 'Aguardando'
+            const nextStatus = appointment.type === 'Petshop' ? 'Banho' : 'IN_PROGRESS';
+
+            await fetch(`${API_BASE_URL}/api/appointments/${appointment.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'IN_PROGRESS',
+                    petshopStatus: appointment.type === 'Petshop' ? 'Banho' : undefined
+                })
+            });
+            fetchAppointments(); // Refresh UI
+            alert(`Paciente ${appointment.pet?.name || 'Provisório'} chamado para atendimento!`);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleCardClick = (appt: any) => {
+        if (appt.status === 'COMPLETED' || appt.status === 'PAID') {
+            // Go to Cashier
+            navigate('/finance');
+        } else if (appt.type === 'Petshop') {
+            // Go to Queue/Monitor
+            navigate('/petshop/monitor');
+        } else {
+            // Clinical
+            navigate('/clinical');
+        }
+    };
+
     const changeDate = (days: number) => {
         const newDate = new Date(currentDate);
         newDate.setDate(newDate.getDate() + days);
         setCurrentDate(newDate);
+    };
+
+    // Helper to get display name
+    const getPetDisplayName = (appt: any) => {
+        if (appt.pet?.name) return appt.pet.name;
+        // Parse provisional
+        if (appt.notes?.includes('PROVISÓRIO:')) {
+            const match = appt.notes.match(/PROVISÓRIO: (.*?) \(Tutor: (.*?)\)/);
+            if (match) return match[1];
+        }
+        return 'Provisório';
+    };
+
+    const getTutorDisplayName = (appt: any) => {
+        if (appt.pet?.tutor?.name) return appt.pet.tutor.name;
+        if (appt.tutor?.name) return appt.tutor.name;
+        if (appt.notes?.includes('Tutor:')) {
+            const match = appt.notes.match(/Tutor: (.*?)\)/);
+            if (match) return match[1];
+        }
+        return '---';
     };
 
     // Calculate Stats
@@ -187,34 +243,105 @@ const Agenda = () => {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700 pb-20 md:pb-0">
             {/* Header Controls */}
-            <header className="bg-white p-6 rounded-[2.5rem] border border-slate-50 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
-                <div className="flex items-center space-x-6">
-                    <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-                        <button onClick={() => changeDate(-1)} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm"><ChevronLeft className="w-5 h-5" /></button>
+            <header className="bg-white p-6 rounded-[2.5rem] border border-slate-50 shadow-sm flex flex-col xl:flex-row justify-between items-center gap-6">
+                <div className="flex flex-col md:flex-row items-center gap-6 w-full xl:w-auto">
+                    <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-full md:w-auto justify-between">
+                        <button onClick={() => changeDate(-1)} className="p-3 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm active:scale-90"><ChevronLeft className="w-5 h-5" /></button>
                         <div className="px-6 font-black text-slate-700 uppercase tracking-widest text-[11px] flex items-center min-w-[180px] justify-center">
                             <CalendarIcon className="w-4 h-4 mr-2.5 text-indigo-600" />
                             {currentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </div>
-                        <button onClick={() => changeDate(1)} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm"><ChevronRight className="w-5 h-5" /></button>
+                        <button onClick={() => changeDate(1)} className="p-3 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm active:scale-90"><ChevronRight className="w-5 h-5" /></button>
                     </div>
-                    <button onClick={() => setCurrentDate(new Date())} className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-2xl uppercase tracking-widest hover:bg-indigo-100 transition-colors">Hoje</button>
+                    <button onClick={() => setCurrentDate(new Date())} className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-6 py-3 rounded-2xl uppercase tracking-widest hover:bg-indigo-100 transition-colors w-full md:w-auto">Hoje</button>
                 </div>
 
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center gap-4 w-full xl:w-auto">
                     <button
                         onClick={() => setShowModal(true)}
-                        className="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all"
+                        className="w-full xl:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                        <Plus className="w-4 h-4 mr-2 inline" /> Agendar
+                        <Plus className="w-4 h-4" /> Novo Agendamento
                     </button>
                 </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Stats Sidebar */}
-                <aside className="lg:col-span-3 space-y-6">
+                {/* Main Calendar View (First on Mobile) */}
+                <main className="lg:col-span-9 bg-white rounded-[3rem] border border-slate-50 shadow-sm overflow-hidden flex flex-col h-[600px] order-1 lg:order-2">
+                    <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+                        <div className="space-y-2 relative">
+                            {hours.map((hour, i) => {
+                                const apptsInHour = appointments.filter(a => {
+                                    const d = new Date(a.date);
+                                    return d.getHours() === parseInt(hour.split(':')[0]);
+                                });
+
+                                return (
+                                    <div key={i} className="flex space-x-4 md:space-x-8 group min-h-[100px]">
+                                        <div className="w-12 md:w-16 text-right pt-2 border-r border-slate-50 pr-4 flex-shrink-0">
+                                            <span className="text-[11px] font-black text-slate-300 uppercase tabular-nums tracking-widest">{hour}</span>
+                                        </div>
+                                        <div className="flex-1 py-1 relative space-y-2">
+                                            {apptsInHour.map(appt => (
+                                                <div
+                                                    key={appt.id}
+                                                    onClick={() => handleCardClick(appt)}
+                                                    className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm hover:shadow-md transition-all cursor-pointer group/card hover:bg-white gap-4"
+                                                >
+                                                    <div className="flex space-x-5 items-center">
+                                                        <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-100 flex items-center justify-center text-xl font-black text-indigo-500 shadow-sm flex-shrink-0">
+                                                            {getPetDisplayName(appt)?.[0] || 'P'}
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center space-x-3 flex-wrap gap-y-1">
+                                                                <h5 className="text-[13px] font-black text-slate-800 uppercase tracking-tight">{getPetDisplayName(appt)}</h5>
+                                                                {appt.notes?.includes('PROVISÓRIO') && (
+                                                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-amber-100 text-amber-700">Provisório</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 flex items-center tracking-tight">
+                                                                <User className="w-3 h-3 mr-2" /> {getTutorDisplayName(appt)}
+                                                            </p>
+                                                            <p className="text-[10px] font-bold text-indigo-400 uppercase mt-1 flex items-center tracking-tight md:hidden">
+                                                                {appt.service}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between w-full md:w-auto space-x-6">
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden md:block">{appt.service}</span>
+                                                        <div className="flex items-center gap-3">
+                                                            {(appt.status === 'SCHEDULED' || appt.status === 'WAITING') && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleCallNow(appt);
+                                                                    }}
+                                                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-600/20"
+                                                                >
+                                                                    Iniciar
+                                                                </button>
+                                                            )}
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{appt.status}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {apptsInHour.length === 0 && (
+                                                <div className="h-full border-b border-slate-50/50 group-hover:border-slate-100 transition-colors" />
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </main>
+
+                {/* Stats Sidebar (Last on Mobile) */}
+                <aside className="lg:col-span-3 space-y-6 order-2 lg:order-1">
                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-50 pb-4">Resumo do Dia</h3>
                         <div className="space-y-4">
@@ -237,11 +364,16 @@ const Agenda = () => {
                                 <Play className="w-20 h-20 text-white fill-current" />
                             </div>
                             <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Próximo Paciente</p>
-                            <h4 className="text-white font-black text-2xl mt-3 uppercase tracking-tighter">{nextPatient.pet?.name}</h4>
+                            <h4 className="text-white font-black text-2xl mt-3 uppercase tracking-tighter">{nextPatient.pet?.name || 'Provisório'}</h4>
                             <p className="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-widest">
                                 {nextPatient.service} • {new Date(nextPatient.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            <button className="mt-8 w-full bg-indigo-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-[0.98]">Chamar Agora</button>
+                            <button
+                                onClick={() => handleCallNow(nextPatient)}
+                                className="mt-8 w-full bg-indigo-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-[0.98]"
+                            >
+                                Chamar Agora
+                            </button>
                         </div>
                     ) : (
                         <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center">
@@ -249,57 +381,6 @@ const Agenda = () => {
                         </div>
                     )}
                 </aside>
-
-                {/* Main Calendar View */}
-                <main className="lg:col-span-9 bg-white rounded-[3rem] border border-slate-50 shadow-sm overflow-hidden flex flex-col h-[600px]">
-                    <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                        <div className="space-y-2 relative">
-                            {hours.map((hour, i) => {
-                                const apptsInHour = appointments.filter(a => {
-                                    const d = new Date(a.date);
-                                    return d.getHours() === parseInt(hour.split(':')[0]);
-                                });
-
-                                return (
-                                    <div key={i} className="flex space-x-8 group min-h-[100px]">
-                                        <div className="w-16 text-right pt-2 border-r border-slate-50 pr-4">
-                                            <span className="text-[11px] font-black text-slate-300 uppercase tabular-nums tracking-widest">{hour}</span>
-                                        </div>
-                                        <div className="flex-1 py-1 relative space-y-2">
-                                            {apptsInHour.map(appt => (
-                                                <div key={appt.id} className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-5 flex justify-between items-center shadow-sm hover:shadow-md transition-all cursor-pointer group/card hover:bg-white">
-                                                    <div className="flex space-x-5 items-center">
-                                                        <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-100 flex items-center justify-center text-xl font-black text-indigo-500 shadow-sm">
-                                                            {appt.pet?.name?.[0] || 'P'}
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex items-center space-x-3">
-                                                                <h5 className="text-[13px] font-black text-slate-800 uppercase tracking-tight">{appt.pet?.name || 'Provisório'}</h5>
-                                                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700">{appt.type}</span>
-                                                                {appt.notes?.includes('PROVISÓRIO') && (
-                                                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-amber-100 text-amber-700">Provisório</span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 flex items-center tracking-tight">
-                                                                <User className="w-3 h-3 mr-2" /> {appt.pet?.tutor?.name || (appt.notes?.includes('PROVISÓRIO') ? 'Check Notes' : '---')}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center space-x-6">
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{appt.status}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {apptsInHour.length === 0 && (
-                                                <div className="h-full border-b border-slate-50/50 group-hover:border-slate-100 transition-colors" />
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </main>
             </div>
 
             {/* Modal Novo Agendamento */}
@@ -403,28 +484,14 @@ const Agenda = () => {
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Tipo</label>
-                                    <select
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all"
-                                        value={form.type}
-                                        onChange={e => setForm({ ...form, type: e.target.value })}
-                                    >
-                                        <option value="Petshop">Petshop (Banho/Tosa)</option>
-                                        <option value="Consulta">Consulta</option>
-                                        <option value="Vacina">Vacina</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Horário</label>
-                                    <input
-                                        type="time"
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all"
-                                        value={form.time}
-                                        onChange={e => setForm({ ...form, time: e.target.value })}
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Horário</label>
+                                <input
+                                    type="time"
+                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all"
+                                    value={form.time}
+                                    onChange={e => setForm({ ...form, time: e.target.value })}
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -449,33 +516,22 @@ const Agenda = () => {
                                     <option value="">Selecione um serviço...</option>
                                     {services.map(s => (
                                         <option key={s.id} value={s.id}>
-                                            {s.name} - R$ {s.price?.toFixed(2)}
+                                            {s.name}
                                         </option>
                                     ))}
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Preço (R$)</label>
-                                    <input
-                                        type="number" step="0.01"
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all tabular-nums"
-                                        value={form.price}
-                                        onChange={e => setForm({ ...form, price: parseFloat(e.target.value) })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Profissional</label>
-                                    <select
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all"
-                                        value={form.veterinarian}
-                                        onChange={e => setForm({ ...form, veterinarian: e.target.value })}
-                                    >
-                                        <option value="">Selecione...</option>
-                                        {professionals.map(p => <option key={p} value={p}>{p}</option>)}
-                                    </select>
-                                </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Profissional</label>
+                                <select
+                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all"
+                                    value={form.veterinarian}
+                                    onChange={e => setForm({ ...form, veterinarian: e.target.value })}
+                                >
+                                    <option value="">Selecione...</option>
+                                    {professionals.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
                             </div>
 
                             <button

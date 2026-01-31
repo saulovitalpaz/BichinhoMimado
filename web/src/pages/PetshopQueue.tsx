@@ -41,7 +41,7 @@ const PetshopQueue = () => {
 
     useEffect(() => {
         fetchAppointments();
-        const interval = setInterval(fetchAppointments, 30000);
+        const interval = setInterval(fetchAppointments, 5000);
         return () => clearInterval(interval);
     }, []);
 
@@ -85,7 +85,7 @@ const PetshopQueue = () => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700 max-w-5xl mx-auto">
             <header className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Link to="/petshop" className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-slate-600">
+                    <Link to="/" className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-slate-600">
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
                     <div>

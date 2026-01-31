@@ -28,7 +28,8 @@ const AdminServices = () => {
         price: '',
         duration: 30,
         category: 'Petshop',
-        active: true
+        active: true,
+        sku: ''
     });
 
     useEffect(() => {
@@ -57,7 +58,8 @@ const AdminServices = () => {
             price: service.price.toString(),
             duration: service.duration,
             category: service.category,
-            active: service.active
+            active: service.active,
+            sku: service.sku || ''
         });
         setShowModal(true);
     };
@@ -70,7 +72,8 @@ const AdminServices = () => {
             price: '',
             duration: 30,
             category: 'Petshop',
-            active: true
+            active: true,
+            sku: ''
         });
         setShowModal(true);
     };
@@ -184,6 +187,11 @@ const AdminServices = () => {
                         <p className="text-slate-400 text-[11px] font-medium leading-relaxed mb-6 line-clamp-2 h-8">
                             {service.description || 'Sem descrição definida.'}
                         </p>
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="text-[9px] font-black bg-slate-50 text-slate-400 px-2.5 py-1 rounded-lg uppercase tracking-widest border border-slate-100">
+                                SKU: {service.sku || 'N/A'}
+                            </span>
+                        </div>
 
                         <div className="space-y-3 border-t border-slate-50 pt-4">
                             <div className="flex justify-between items-center">
@@ -254,6 +262,20 @@ const AdminServices = () => {
                                         placeholder="Ex: Banho Completo"
                                         value={form.name}
                                         onChange={e => setForm({ ...form, name: e.target.value })}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block flex justify-between">
+                                        SKU / Referência
+                                        <span className="text-indigo-400 text-[8px]">Automático se vazio</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all font-mono"
+                                        placeholder="Auto-gerado"
+                                        value={form.sku}
+                                        onChange={e => setForm({ ...form, sku: e.target.value })}
                                     />
                                 </div>
 

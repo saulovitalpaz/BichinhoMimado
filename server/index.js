@@ -16,10 +16,17 @@ const corsOptions = {
             'http://127.0.0.1:5173',
             'http://192.168.5.136:5173'
         ];
+
+        // Add production frontend URL from environment variable
+        if (process.env.FRONTEND_URL) {
+            whitelist.push(process.env.FRONTEND_URL);
+        }
+
         // Allow requests with no origin (like mobile apps or curl requests) in development
-        if (!origin || whitelist.indexOf(origin) !== -1) {
+        if (!origin || whitelist.indexOf(origin) !== -1 || (process.env.NODE_ENV === 'development')) {
             callback(null, true);
         } else {
+            console.warn(`CORS blocked for origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
@@ -85,9 +92,10 @@ app.get('/api/services', async (req, res) => {
 
 app.post('/api/services', async (req, res) => {
     try {
-        const { name, description, price, duration, category, active } = req.body;
+        const { name, description, price, duration, category, active, sku } = req.body;
+        const finalSku = sku || `SRV-${name.substring(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
         const service = await prisma.service.create({
-            data: { name, description, price, duration, category, active }
+            data: { name, description, price, duration, category, active, sku: finalSku }
         });
         res.json(service);
     } catch (e) {
@@ -164,12 +172,16 @@ app.get('/api/petshop/billable-services', async (req, res) => {
     try {
         const services = await prisma.appointment.findMany({
             where: {
-                type: 'Petshop',
-                petshopStatus: 'Pronto',
-                // We consider it billable if it hasn't been completed/billed yet
-                status: 'SCHEDULED'
+                OR: [
+                    // Petshop: Must be 'Pronto' and not paid
+                    { type: 'Petshop', petshopStatus: 'Pronto', status: { not: 'PAID' } },
+                    // Clinical: Must be 'COMPLETED' (doctor finished) and not paid
+                    { type: 'Clinical', status: 'COMPLETED' }, // Assuming Clinical sets COMPLETED
+                    // OR if status is IN_PROGRESS but clearly done (safety net)
+                    { type: 'Petshop', petshopStatus: 'Pronto', status: 'IN_PROGRESS' }
+                ]
             },
-            include: { 
+            include: {
                 pet: { include: { tutor: true } },
                 tutor: true // Also include direct tutor link
             }
@@ -213,6 +225,19 @@ app.post('/api/tutors', async (req, res) => {
     }
 });
 
+app.delete('/api/tutors/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.tutor.update({
+            where: { id: parseInt(id) },
+            data: { deletedAt: new Date() }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete tutor' });
+    }
+});
+
 app.post('/api/pets', async (req, res) => {
     try {
         const { name, species, breed, age, weight, gender, tutorId, notes, allergies } = req.body;
@@ -249,6 +274,19 @@ app.post('/api/pets', async (req, res) => {
     } catch (e) {
         console.error('Pet Create Error:', e);
         res.status(500).json({ error: e.message || 'Failed to create pet' });
+    }
+});
+
+app.delete('/api/pets/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.pet.update({
+            where: { id: parseInt(id) },
+            data: { deletedAt: new Date() }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete pet' });
     }
 });
 
@@ -603,12 +641,13 @@ app.post('/api/products', async (req, res) => {
     try {
         const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry, userId } = req.body;
         const initialStock = parseInt(stock) || 0;
+        const finalSku = sku || `PRD-${name.substring(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
         const product = await prisma.product.create({
             data: {
                 name,
                 description,
-                sku,
+                sku: finalSku,
                 category,
                 stock: initialStock,
                 minStock: parseInt(minStock) || 5,
@@ -715,34 +754,65 @@ app.post('/api/sales', async (req, res) => {
     try {
         const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-        // 1. Create the Bill
+        // 1. Create the Bill with item details (including cost snapshots)
+        const itemsWithCosts = await Promise.all(items.map(async item => {
+            let costAmount = null;
+            if (item.productId) {
+                const product = await prisma.product.findUnique({
+                    where: { id: item.productId },
+                    select: { costPrice: true }
+                });
+                costAmount = product?.costPrice || 0;
+            }
+            return { ...item, costAmount };
+        }));
+
         const bill = await prisma.bill.create({
             data: {
                 tutorId,
                 description: 'Venda Petshop / PDV',
                 amount: totalAmount,
                 dueDate: new Date(),
-                paidDate: new Date(), // Sales are usually paid instantly
+                paidDate: new Date(),
                 status: 'PAID',
                 paymentMethod,
                 category: 'Retail',
                 items: {
-                    create: items.map(item => ({
+                    create: itemsWithCosts.map(item => ({
                         category: 'PDV',
                         description: item.name,
                         amount: item.price,
-                        quantity: item.quantity
+                        costAmount: item.costAmount,
+                        quantity: item.quantity,
+                        serviceId: item.serviceId ? parseInt(item.serviceId) : null
                     }))
                 }
             }
         });
 
-        // 2. Reduce Stock
+        // 2. Reduce Stock & Update Appointments & Record Movement
         for (const item of items) {
             if (item.productId) {
                 await prisma.product.update({
                     where: { id: item.productId },
                     data: { stock: { decrement: item.quantity } }
+                });
+
+                await prisma.stockMovement.create({
+                    data: {
+                        productId: item.productId,
+                        type: 'EXIT',
+                        quantity: item.quantity,
+                        reason: 'Venda PDV',
+                        userId: userId || null
+                    }
+                });
+            }
+
+            if (item.serviceId) {
+                await prisma.appointment.update({
+                    where: { id: parseInt(item.serviceId) },
+                    data: { status: 'PAID' }
                 });
             }
         }
@@ -753,6 +823,38 @@ app.post('/api/sales', async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Failed to process sale' });
+    }
+});
+
+app.get('/api/sales', async (req, res) => {
+    try {
+        const sales = await prisma.bill.findMany({
+            where: {
+                category: 'Retail',
+                deletedAt: null
+            },
+            include: {
+                tutor: true,
+                items: {
+                    include: {
+                        service: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Add date field for frontend compatibility (some parts use .date)
+        const formattedSales = sales.map(s => ({
+            ...s,
+            date: s.createdAt,
+            total: s.amount
+        }));
+
+        res.json(formattedSales);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to fetch sales' });
     }
 });
 
@@ -802,6 +904,101 @@ app.use(express.static(path.join(__dirname, '../web/dist')));
 app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../web/dist/index.html'));
 });
+
+// === Fiscal & NFe Module ===
+app.get('/api/company', async (req, res) => {
+    try {
+        const company = await prisma.company.findFirst();
+        res.json(company || {});
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch company' });
+    }
+});
+
+app.post('/api/company', async (req, res) => {
+    try {
+        // Upsert logic: if exists update, else create
+        const count = await prisma.company.count();
+        if (count > 0) {
+            const first = await prisma.company.findFirst();
+            const company = await prisma.company.update({
+                where: { id: first.id },
+                data: req.body
+            });
+            res.json(company);
+        } else {
+            const company = await prisma.company.create({ data: req.body });
+            res.json(company);
+        }
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to save company' });
+    }
+});
+
+app.post('/api/nfe/validate', async (req, res) => {
+    const { saleId } = req.body;
+    try {
+        const sale = await prisma.bill.findUnique({
+            where: { id: parseInt(saleId) },
+            include: {
+                tutor: true,
+                items: {
+                    include: {
+                        service: true
+                    }
+                }
+            }
+        });
+
+        if (!sale) return res.status(404).json({ error: 'Sale not found' });
+
+        const errors = [];
+
+        // 1. Validator: Company
+        const company = await prisma.company.findFirst();
+        if (!company?.cnpj) errors.push('Empresa: CNPJ não configurado.');
+        if (!company?.ie) errors.push('Empresa: Inscrição Estadual ausente.');
+        if (!company?.address) errors.push('Empresa: Endereço completo obrigatório.');
+
+        // 2. Validator: Client (Tutor)
+        if (!sale.tutor) {
+            errors.push('Cliente: Venda sem cliente vinculado (Consumidor Final?).');
+        } else {
+            if (!sale.tutor.cpf) errors.push('Cliente: CPF obrigatório para NFe.');
+            if (!sale.tutor.address || !sale.tutor.zipCode || !sale.tutor.city) {
+                errors.push('Cliente: Endereço completo (Rua, CEP, Cidade) obrigatório.');
+            }
+        }
+
+        // 3. Validator: Products/Services
+        let hasNcmError = false;
+        for (const item of sale.items) {
+            // In a real scenario we would fetch Product details to check NCM if not stored in item
+            // For now we assume items have what we need or we check the source
+        }
+
+        if (errors.length > 0) {
+            return res.json({ valid: false, errors });
+        }
+
+        // If valid, return a preview structure
+        return res.json({
+            valid: true,
+            preview: {
+                issuer: company.name,
+                recipient: sale.tutor?.name || 'Consumidor',
+                total: sale.amount,
+                taxTotal: sale.amount * 0.18 // Mock tax calc
+            }
+        });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Validation failed' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

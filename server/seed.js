@@ -5,19 +5,12 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('🌱 Starting seed...');
 
-    // CLEANUP
-    console.log('🧹 Cleaning database...');
-    await prisma.appointment.deleteMany();
-    await prisma.prescription.deleteMany();
-    await prisma.medicalRecord.deleteMany();
-    await prisma.invoiceItem.deleteMany();
-    await prisma.bill.deleteMany();
-    await prisma.product.deleteMany();
-    await prisma.pet.deleteMany();
-    await prisma.tutor.deleteMany();
-    await prisma.auditLog.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.dailyCashFlow.deleteMany();
+    // SAFETY CHECK: Only seed if database is empty
+    const userCount = await prisma.user.count();
+    if (userCount > 0) {
+        console.log('✅ Database already populated. Skipping seed to preserve data.');
+        return;
+    }
 
     // 0. Create Users
     console.log('👥 Creating users...');

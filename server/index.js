@@ -17,7 +17,7 @@ const corsOptions = {
             'http://127.0.0.1:5173',
             'http://192.168.5.136:5173'
         ];
-        
+
         // Normalize FRONTEND_URL from environment
         const envFrontend = process.env.FRONTEND_URL?.replace(/\/$/, ""); // Remove trailing slash
         if (envFrontend) {
@@ -28,9 +28,9 @@ const corsOptions = {
         if (!origin) return callback(null, true);
 
         // Check if origin is in whitelist or matches Railway pattern
-        const isWhitelisted = whitelist.includes(origin) || 
-                             whitelist.includes(origin + "/") ||
-                             (origin.endsWith('.railway.app')); // Extra safety for Railway deployment
+        const isWhitelisted = whitelist.includes(origin) ||
+            whitelist.includes(origin + "/") ||
+            (origin.endsWith('.railway.app')); // Extra safety for Railway deployment
 
         if (isWhitelisted || process.env.NODE_ENV === 'development') {
             callback(null, true);
@@ -45,6 +45,15 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// === Health Check & Root ===
+app.get('/', (req, res) => {
+    res.json({ status: 'online', message: 'Bichinho Mimado API is running', environment: process.env.NODE_ENV });
+});
+
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
 
 // === Helper Functions ===
 const createAuditLog = async (userId, table, recordId, action, changes = null, ipAddress = null, userAgent = null) => {
@@ -85,7 +94,8 @@ app.post('/api/login', async (req, res) => {
 
         res.json(userWithoutPassword);
     } catch (e) {
-        res.status(500).json({ error: 'Login failed' });
+        console.error('Login Error:', e);
+        res.status(500).json({ error: 'Login failed', message: e.message });
     }
 });
 

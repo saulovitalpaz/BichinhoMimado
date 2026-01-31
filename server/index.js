@@ -1084,7 +1084,14 @@ app.post('/api/nfe/validate', async (req, res) => {
             }
         });
 
-        // === Goals API ===
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Validation failed' });
+    }
+});
+
+// === Goals API ===
         app.get('/api/goals', async (req, res) => {
             try {
                 const goals = await prisma.goal.findMany();

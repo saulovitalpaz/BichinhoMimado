@@ -8,7 +8,8 @@
     "dev": "node --watch index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prisma:push": "npx prisma db push",
-    "prisma:seed": "node seed.js"
+    "prisma:seed": "node seed.js",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",

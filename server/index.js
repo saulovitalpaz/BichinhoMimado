@@ -6,7 +6,11 @@ require('dotenv').config();
 
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3001;
+// Railway provides the PORT, we must prioritize it
+const PORT = parseInt(process.env.PORT) || 3001;
+if (!process.env.PORT) {
+    console.warn(`WARNING: PORT environment variable not set, falling back to ${PORT}`);
+}
 
 // CORS Configuration - Robust for Production
 const corsOptions = {
@@ -28,14 +32,13 @@ const corsOptions = {
         if (!origin) return callback(null, true);
 
         // Check if origin is in whitelist or matches Railway pattern
-        const isWhitelisted = whitelist.includes(origin) ||
-            whitelist.includes(origin + "/") ||
-            (origin.endsWith('.railway.app')); // Extra safety for Railway deployment
+        const isWhitelisted = whitelist.some(w => origin === w || origin === w + "/") ||
+            origin.includes('.railway.app'); // More robust than endsWith
 
         if (isWhitelisted || process.env.NODE_ENV === 'development') {
             callback(null, true);
         } else {
-            console.error(`CORS blocked for origin: ${origin}. Expected one of: ${whitelist.join(', ')}`);
+            console.error(`CORS blocked for origin: ${origin}. Whitelist: ${whitelist.join(', ')}`);
             callback(new Error('Not allowed by CORS'));
         }
     },

@@ -8,29 +8,39 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
-// CORS Configuration - Security Hardening
+// CORS Configuration - Robust for Production
 const corsOptions = {
     origin: function (origin, callback) {
+        // Core Whitelist
         const whitelist = [
             'http://localhost:5173',
             'http://127.0.0.1:5173',
             'http://192.168.5.136:5173'
         ];
-
-        // Add production frontend URL from environment variable
-        if (process.env.FRONTEND_URL) {
-            whitelist.push(process.env.FRONTEND_URL);
+        
+        // Normalize FRONTEND_URL from environment
+        const envFrontend = process.env.FRONTEND_URL?.replace(/\/$/, ""); // Remove trailing slash
+        if (envFrontend) {
+            whitelist.push(envFrontend);
         }
 
-        // Allow requests with no origin (like mobile apps or curl requests) in development
-        if (!origin || whitelist.indexOf(origin) !== -1 || (process.env.NODE_ENV === 'development')) {
+        // Allow requests with no origin (like mobile apps)
+        if (!origin) return callback(null, true);
+
+        // Check if origin is in whitelist or matches Railway pattern
+        const isWhitelisted = whitelist.includes(origin) || 
+                             whitelist.includes(origin + "/") ||
+                             (origin.endsWith('.railway.app')); // Extra safety for Railway deployment
+
+        if (isWhitelisted || process.env.NODE_ENV === 'development') {
             callback(null, true);
         } else {
-            console.warn(`CORS blocked for origin: ${origin}`);
+            console.error(`CORS blocked for origin: ${origin}. Expected one of: ${whitelist.join(', ')}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true
+    credentials: true,
+    optionsSuccessStatus: 200 // Some legacy browsers crash on 204
 };
 
 app.use(cors(corsOptions));

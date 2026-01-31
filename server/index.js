@@ -910,19 +910,18 @@ app.get('/api/petshop/stats', async (req, res) => {
 });
 
 
-// === Core Data ===
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date() });
+// === Health Check & Root ===
+app.get('/', (req, res) => {
+    res.json({
+        status: 'online',
+        message: 'Bichinho Mimado API is running',
+        environment: process.env.NODE_ENV,
+        port: PORT
+    });
 });
 
-// === Production Static Serving ===
-// Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, '../web/dist')));
-
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
-app.get(/.*/, (req, res) => {
-    res.sendFile(path.join(__dirname, '../web/dist/index.html'));
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', database: 'connected' });
 });
 
 // === Fiscal & NFe Module ===
@@ -1020,6 +1019,6 @@ app.post('/api/nfe/validate', async (req, res) => {
 });
 
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
 });

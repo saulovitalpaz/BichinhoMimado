@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, Filter, MoreHorizontal, Mail, Phone, MapPin, ChevronRight, Edit2, X, Save, Dog, History, ShoppingBag, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
+import { useAuth } from '../context/AuthContext';
+
 const Clientes = () => {
+    const { user } = useAuth();
     const [tutors, setTutors] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
@@ -104,7 +107,7 @@ const Clientes = () => {
         } else {
             setEditingTutor(null);
             setTutorForm({ name: '', cpf: '', phone: '', email: '', address: '' });
-            setPetForm({ name: '', species: 'Canino', breed: '', age: '', weight: '', gender: 'Macho' });
+            setPetForm({ name: '', species: 'Canino', breed: '', age: '', weight: '', gender: 'Macho', tutorId: '' });
             setStep(1);
         }
         setShowModal(true);
@@ -204,15 +207,15 @@ const Clientes = () => {
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
-                    className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 flex items-center"
+                    className="bg-fuchsia-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-fuchsia-600/20 hover:bg-fuchsia-700 transition-all active:scale-95 flex items-center"
                 >
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Cliente
                 </button>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-white rounded-3xl border border-slate-50 shadow-sm overflow-hidden min-h-[400px]">
+                <div className="p-4 sm:p-5 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative group flex-1 max-w-md">
                         <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                         <input
@@ -229,10 +232,10 @@ const Clientes = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/30 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
-                                <th className="px-8 py-5">Nome do Tutor</th>
-                                <th className="px-8 py-5">Contato</th>
-                                <th className="px-8 py-5 text-center">Pets</th>
-                                <th className="px-8 py-5 text-right">Ação</th>
+                                <th className="px-4 sm:px-8 py-4 sm:py-5">Nome do Tutor</th>
+                                <th className="px-4 sm:px-8 py-4 sm:py-5">Contato</th>
+                                <th className="px-4 sm:px-8 py-4 sm:py-5 text-center">Pets</th>
+                                <th className="px-4 sm:px-8 py-4 sm:py-5 text-right">Ação</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -244,7 +247,7 @@ const Clientes = () => {
                                 <tr key={tutor.id} className="group hover:bg-slate-50/50 transition-colors">
                                     <td className="px-8 py-4">
                                         <div className="flex items-center">
-                                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-xs mr-4 uppercase">
+                                            <div className="w-10 h-10 rounded-2xl bg-fuchsia-50 flex items-center justify-center text-fuchsia-600 font-black text-xs mr-4 uppercase">
                                                 {tutor.name[0]}
                                             </div>
                                             <div>
@@ -293,20 +296,24 @@ const Clientes = () => {
                                             >
                                                 <Plus className="w-4 h-4" />
                                             </button>
-                                            <button
-                                                onClick={() => handleOpenModal(tutor)}
-                                                className="p-2 hover:bg-white rounded-xl shadow-sm border border-slate-100/50 text-slate-400 hover:text-indigo-600 transition-all"
-                                                title="Editar Cliente"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteTutor(tutor.id)}
-                                                className="p-2 hover:bg-white rounded-xl shadow-sm border border-slate-100/50 text-slate-400 hover:text-red-600 transition-all ml-2"
-                                                title="Excluir Cliente"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            {user?.role !== 'receptionist' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleOpenModal(tutor)}
+                                                        className="p-2 hover:bg-white rounded-xl shadow-sm border border-slate-100/50 text-slate-400 hover:text-indigo-600 transition-all"
+                                                        title="Editar Cliente"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteTutor(tutor.id)}
+                                                        className="p-2 hover:bg-white rounded-xl shadow-sm border border-slate-100/50 text-slate-400 hover:text-red-600 transition-all ml-2"
+                                                        title="Excluir Cliente"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -320,7 +327,7 @@ const Clientes = () => {
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-                    <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="bg-white w-full max-w-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
                         <header className="p-8 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                             <div>
                                 <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">
@@ -470,7 +477,7 @@ const Clientes = () => {
                             <div className="flex gap-4 ml-auto">
                                 <button
                                     onClick={step === 1 ? handleSaveTutor : handleSavePet}
-                                    className="bg-indigo-600 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 flex items-center"
+                                    className="bg-fuchsia-600 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-fuchsia-600/20 hover:bg-fuchsia-700 transition-all active:scale-95 flex items-center"
                                 >
                                     {step === 1 ? (editingTutor ? 'Salvar Alterações' : 'Próximo: Adicionar Pet') : 'Finalizar Cadastro'}
                                     <ChevronRight className="w-4 h-4 ml-2" />
@@ -485,7 +492,7 @@ const Clientes = () => {
             {showHistoryModal && viewingHistoryTutor && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)} />
-                    <div className="bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col h-[85vh]">
+                    <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col h-[85vh]">
                         <header className="p-8 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                             <div>
                                 <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">

@@ -45,11 +45,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const navigate = useNavigate();
     const { user, logout, workspace, switchWorkspace } = useAuth();
     const [isOnline, setIsOnline] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 768); // Auto-collapse on mobile initially
+    const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 1024); // Auto-collapse on tablet/mobile initially
 
     useEffect(() => {
         const handleResize = () => {
-            if (window.innerWidth < 768) setIsCollapsed(true);
+            if (window.innerWidth < 1024) setIsCollapsed(true);
             else setIsCollapsed(false);
         };
         window.addEventListener('resize', handleResize);
@@ -116,7 +116,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         { type: 'header', label: 'Gestão & Cadastros' },
         { path: '/clientes', icon: Users, label: 'Clientes & Pets', color: 'text-blue-500' },
-        { path: '/estoque', icon: Package, label: 'Estoque / Produtos', color: 'text-emerald-500' },
+        { path: '/estoque', icon: Package, label: 'Estoque / Produtos', color: 'text-emerald-500', roles: ['admin_business', 'admin_vet'] },
         { path: '/admin/services', icon: Tag, label: 'Serviços / Preços', color: 'text-pink-500', roles: ['admin_business', 'admin_vet'] },
         { label: 'Relatórios', path: '/admin/finance', icon: Grid, color: 'text-green-600', roles: ['admin_business'] },
         { label: 'Config Fiscal', path: '/admin/fiscal', icon: Settings, color: 'text-slate-600', roles: ['admin_business'] }
@@ -127,7 +127,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         const roleRestrictions: Record<string, string[]> = {
             VETERINARIAN: ['/finance', '/petshop'],
-            RECEPTIONIST: ['/internation'],
+            RECEPTIONIST: ['/internation', '/estoque', '/admin/finance', '/admin/fiscal', '/admin/services'],
         };
 
         const restricted = roleRestrictions[user.role as keyof typeof roleRestrictions] || [];
@@ -154,9 +154,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 `}
             >
                 {/* Brand Header */}
-                <div className={`flex items-center justify-between px-6 border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'md:h-14' : 'h-20 md:h-24'}`}>
-                    <div className={`relative transition-all duration-300 ${isCollapsed ? 'md:w-10 md:h-10' : 'w-32 h-12'}`}>
-                        <img src="/Logo.png" alt="Logo" className="w-full h-full object-contain" />
+                <div className={`flex items-center justify-between px-4 sm:px-6 border-b border-slate-50 transition-all duration-300 ${isCollapsed ? 'md:h-16' : 'h-24 md:h-28'}`}>
+                    <div className={`relative transition-all duration-300 ${isCollapsed ? 'md:w-12 md:h-12' : 'w-32 sm:w-40 h-16'}`}>
+                        <img src="/Logo.png" alt="Logo" className="w-full h-full object-contain filter drop-shadow-sm transition-transform hover:scale-105" />
                     </div>
                     {/* Mobile Close Button */}
                     <button
@@ -254,7 +254,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     </div>
                 </header>
 
-                <div className="p-4 sm:p-6 md:p-8 h-full max-w-[1600px] w-full mx-auto">
+                <div className="p-3 sm:p-4 md:p-6 h-full max-w-full lg:max-w-[1600px] w-full mx-auto">
                     {children}
                 </div>
             </main>

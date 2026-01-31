@@ -18,6 +18,8 @@ const CashierModule = () => {
     const [tutorSearch, setTutorSearch] = useState('');
     const [tutorResults, setTutorResults] = useState<any[]>([]);
     const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+    const [installments, setInstallments] = useState(1);
+    const [taxRate, setTaxRate] = useState(0); // Percentage
     const [isSearchingClient, setIsSearchingClient] = useState(false);
 
     useEffect(() => {
@@ -136,6 +138,8 @@ const CashierModule = () => {
                         name: item.name
                     })),
                     paymentMethod,
+                    installments: (paymentMethod === 'Credit') ? installments : 1,
+                    taxAmount: (paymentMethod === 'Credit' || paymentMethod === 'Debit') ? (cart.reduce((access, item) => access + (item.price * item.qty), 0) * (taxRate / 100)).toFixed(2) : 0,
                     tutorId: checkoutData.tutor.id,
                     userId: 1 // TODO: Context User
                 })
@@ -203,17 +207,17 @@ const CashierModule = () => {
             </div>
 
             {/* Main Content */}
-            <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden min-h-[400px]">
+            <div className="bg-white rounded-3xl border border-slate-50 shadow-sm overflow-hidden min-h-[400px]">
                 {loading ? (
                     <div className="flex justify-center items-center h-40 text-slate-300 font-black uppercase tracking-widest text-xs">Carregando...</div>
                 ) : (
                     <>
                         {activeTab === 'SERVICES' && (
-                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="p-3 sm:p-5 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                 {filteredServices.map(svc => (
                                     <div key={svc.id} onClick={() => openCheckout(svc)} className="group bg-slate-50/50 hover:bg-white border border-slate-100 hover:border-indigo-100 p-6 rounded-3xl cursor-pointer transition-all hover:shadow-xl">
                                         <div className="flex justify-between items-start mb-4">
-                                            <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm">
+                                            <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-fuchsia-500 shadow-sm">
                                                 <Scissors className="w-5 h-5" />
                                             </div>
                                             <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">Aguardando</span>
@@ -266,9 +270,9 @@ const CashierModule = () => {
 
             {/* Checkout Modal */}
             {checkoutData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
                     <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setCheckoutData(null)} />
-                    <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl relative flex flex-col md:flex-row h-[80vh] md:h-auto animate-in zoom-in-95 duration-200">
+                    <div className="bg-white w-full h-full sm:h-auto sm:max-w-4xl sm:rounded-3xl shadow-2xl relative flex flex-col md:flex-row max-h-screen sm:max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden">
                         {/* Left: Cart */}
                         <div className="flex-1 bg-slate-50 p-8 flex flex-col border-r border-slate-100">
                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-6">Comanda</h3>
@@ -276,7 +280,7 @@ const CashierModule = () => {
                                 {cart.map((item, idx) => (
                                     <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${item.type === 'SERVICE' ? 'bg-indigo-50 text-indigo-500' : 'bg-emerald-50 text-emerald-500'}`}>
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${item.type === 'SERVICE' ? 'bg-fuchsia-50 text-fuchsia-500' : 'bg-emerald-50 text-emerald-500'}`}>
                                                 {item.type === 'SERVICE' ? <Scissors className="w-4 h-4" /> : <Package className="w-4 h-4" />}
                                             </div>
                                             <div>
@@ -295,7 +299,7 @@ const CashierModule = () => {
                                 <div className="relative z-50">
                                     <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                                     <input
-                                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-bold outline-none focus:border-indigo-500 transition-colors"
+                                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-bold outline-none focus:border-fuchsia-500 transition-colors"
                                         placeholder="Buscar produto..."
                                         value={productSearch}
                                         onChange={e => setProductSearch(e.target.value)}
@@ -397,6 +401,38 @@ const CashierModule = () => {
                                         </button>
                                     ))}
                                 </div>
+
+
+                                {/* Installments & Tax (Credit Card) */}
+                                {paymentMethod === 'Credit' && (
+                                    <div className="bg-slate-50 p-4 rounded-2xl mb-6 space-y-4 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Parcelamento</p>
+                                            <select
+                                                value={installments}
+                                                onChange={e => setInstallments(parseInt(e.target.value))}
+                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-bold outline-none focus:border-indigo-500"
+                                            >
+                                                {[1, 2, 3, 4, 5, 6, 12].map(i => (
+                                                    <option key={i} value={i}>{i}x {i === 1 ? '(À Vista)' : `sem juros`}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Taxa Maquininha (%)</p>
+                                            <input
+                                                type="number"
+                                                value={taxRate}
+                                                onChange={e => setTaxRate(parseFloat(e.target.value))}
+                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-bold outline-none focus:border-indigo-500"
+                                                placeholder="Ex: 4.5"
+                                            />
+                                            <p className="text-[9px] text-slate-400 mt-1 text-right">
+                                                Desconto estimado: R$ {(total * (taxRate / 100)).toFixed(2)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -416,8 +452,9 @@ const CashierModule = () => {
                         </div>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };
 

@@ -76,7 +76,7 @@ model Pet {
   legacyId       String?         // ID from Excel
   observations   String?
   tutorId        Int
-  tutor          Tutor           @relation(fields: [tutorId], references: [id])
+  tutor          Tutor           @relation(fields: [tutorId], references: [id], onDelete: Cascade)
   medicalRecords MedicalRecord[]
   appointments   Appointment[]
   invoiceItems   InvoiceItem[]
@@ -137,7 +137,7 @@ model Appointment {
   groomer       String? // Profissional responsável
 
   petId     Int?
-  pet       Pet?     @relation(fields: [petId], references: [id])
+  pet       Pet?     @relation(fields: [petId], references: [id], onDelete: Cascade)
 
   tutorId   Int?
   tutor     Tutor?   @relation(fields: [tutorId], references: [id])
@@ -203,6 +203,9 @@ model Bill {
   paymentMethod String?       // Credit, Debit, Cash, Pix
   type          String        @default("Receivable") // Receivable (Receita), Payable (Despesa)
   status        String        // Paid, Pending, Overdue
+  installments  Int           @default(1)
+  taxAmount     Float?        @default(0.0)
+  netAmount     Float?        // amount - taxAmount
   
   tutorId       Int?
   tutor         Tutor?        @relation(fields: [tutorId], references: [id])
@@ -321,4 +324,14 @@ model Service {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime? // Soft Delete
+}
+
+model Professional {
+  id        Int      @id @default(autoincrement())
+  name      String
+  role      String   // 'Veterinarian', 'Groomer', 'Clerk'
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? // Soft Delete
 }

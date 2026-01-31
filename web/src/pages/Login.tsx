@@ -36,13 +36,13 @@ const Login = () => {
             <div className="w-full max-w-[420px] relative z-10 animate-in fade-in zoom-in-95 duration-1000">
                 {/* Logo Section */}
                 <div className="flex flex-col items-center mb-12">
-                    <div className="w-64 h-32 flex items-center justify-center transition-transform duration-500 hover:scale-105 active:scale-95">
+                    <div className="w-80 h-40 flex items-center justify-center transition-transform duration-500 hover:scale-110 active:scale-95 drop-shadow-2xl">
                         <img src="/Logo.png" alt="Bichinho Mimado" className="w-full h-full object-contain" />
                     </div>
                 </div>
 
                 {/* Login Card */}
-                <div className="bg-white/70 backdrop-blur-xl rounded-[2.5rem] p-10 border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]">
+                <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]">
                     <div className="mb-8">
                         <h2 className="text-2xl font-black text-slate-800 tracking-tight">Portal Integrado</h2>
                         <p className="text-slate-400 text-xs font-semibold mt-1">Bem-vindo à nova gestão clínica e petshop.</p>
@@ -52,11 +52,11 @@ const Login = () => {
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Profissional</label>
                             <div className="relative group">
-                                <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-fuchsia-600 transition-colors" />
                                 <input
                                     type="email"
                                     placeholder="seu@email.com"
-                                    className="w-full pl-12 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-3xl text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-indigo-600/5 focus:border-indigo-600/40 transition-all placeholder:text-slate-300"
+                                    className="w-full pl-12 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-3xl text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-fuchsia-600/5 focus:border-fuchsia-600/40 transition-all placeholder:text-slate-300"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -67,11 +67,11 @@ const Login = () => {
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
                             <div className="relative group">
-                                <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-fuchsia-600 transition-colors" />
                                 <input
                                     type="password"
                                     placeholder="••••••••"
-                                    className="w-full pl-12 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-3xl text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-indigo-600/5 focus:border-indigo-600/40 transition-all placeholder:text-slate-300"
+                                    className="w-full pl-12 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-3xl text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-fuchsia-600/5 focus:border-fuchsia-600/40 transition-all placeholder:text-slate-300"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -88,7 +88,7 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-slate-900 text-white py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-[0.98] disabled:opacity-50 disabled:scale-100 shadow-xl shadow-slate-900/10 flex items-center justify-center group"
+                            className="w-full bg-slate-900 text-white py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest hover:bg-fuchsia-600 transition-all active:scale-[0.98] disabled:opacity-50 disabled:scale-100 shadow-xl shadow-slate-900/10 flex items-center justify-center group"
                         >
                             {isLoading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

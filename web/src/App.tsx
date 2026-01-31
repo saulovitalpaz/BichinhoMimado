@@ -18,6 +18,8 @@ import AdminServices from './pages/AdminServices';
 import PetshopQueue from './pages/PetshopQueue';
 import AdminFinance from './pages/AdminFinance';
 import AdminFiscal from './pages/AdminFiscal';
+import AdminProfessionals from './pages/admin/AdminProfessionals';
+import AdminProfessionals from './pages/admin/AdminProfessionals';
 
 // Import New Modules
 import CalendarService from './modules/medical/CalendarService';

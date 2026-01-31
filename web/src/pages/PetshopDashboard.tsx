@@ -98,7 +98,7 @@ const PetshopDashboard = () => {
                     <p className="text-[10px] md:text-[11px] text-slate-400 font-medium uppercase tracking-widest mt-1">Centro de Controle Operacional</p>
                 </div>
                 <div className="hidden md:flex gap-4">
-                    <Link to="/agenda" className="bg-indigo-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center active:scale-95">
+                    <Link to="/agenda" className="bg-fuchsia-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-fuchsia-600/20 hover:bg-fuchsia-700 transition-all flex items-center active:scale-95">
                         <Calendar className="w-4 h-4 mr-2" />
                         Novo Agendamento
                     </Link>
@@ -107,11 +107,11 @@ const PetshopDashboard = () => {
 
             <div className="grid grid-cols-12 gap-6 md:gap-8">
                 {/* Main Ops */}
-                <div className="col-span-12 lg:col-span-8 space-y-6 md:space-y-8">
+                <div className="col-span-12 lg:col-span-8 space-y-6">
                     {/* Active Queue */}
-                    <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden transition-all duration-300">
+                    <div className="bg-white rounded-3xl border border-slate-50 shadow-sm overflow-hidden transition-all duration-300">
                         <header
-                            className="p-6 md:p-8 bg-slate-900 text-white flex justify-between items-center cursor-pointer active:bg-slate-800 transition-colors"
+                            className="p-4 sm:p-5 md:p-6 bg-slate-900 text-white flex justify-between items-center cursor-pointer active:bg-slate-800 transition-colors"
                             onClick={() => setShowQueue(!showQueue)}
                         >
                             <div className="flex items-center space-x-3">
@@ -127,9 +127,9 @@ const PetshopDashboard = () => {
                         </header>
 
                         {showQueue && (
-                            <div className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-top-4 duration-300">
+                            <div className="p-4 sm:p-5 md:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 animate-in slide-in-from-top-4 duration-300">
                                 {activeQueue.map((item, i) => (
-                                    <div key={item.id} className={`p-6 rounded-[2rem] border transition-all ${i === 0 ? 'bg-indigo-50 border-indigo-100 shadow-xl shadow-indigo-100/20' : 'bg-white border-slate-50 shadow-sm hover:shadow-lg'}`}>
+                                    <div key={item.id} className={`p-4 rounded-3xl border transition-all ${i === 0 ? 'bg-fuchsia-50 border-fuchsia-100 shadow-xl shadow-fuchsia-100/20' : 'bg-white border-slate-50 shadow-sm hover:shadow-lg'}`}>
                                         <div className="flex justify-between items-start mb-4">
                                             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black ${i === 0 ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-300'}`}>
                                                 {item.pet?.name?.[0]}
@@ -164,9 +164,9 @@ const PetshopDashboard = () => {
                 </div>
 
                 {/* Sidebar Stats */}
-                <div className="col-span-12 lg:col-span-4 space-y-6 md:space-y-8">
+                <div className="col-span-12 lg:col-span-4 space-y-6">
                     {/* Next Up / Check-in */}
-                    <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-50 shadow-sm relative overflow-hidden">
                         <header className="flex justify-between items-center mb-6">
                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Agenda: Próximos</h3>
                             <button onClick={() => window.location.reload()} className="text-slate-300 hover:text-indigo-500 transition-colors"><Clock className="w-4 h-4" /></button>
@@ -202,10 +202,10 @@ const PetshopDashboard = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-50 shadow-sm relative overflow-hidden group">
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">Vendas Hoje</h3>
-                        <p className="text-3xl md:text-4xl font-black text-slate-800 mt-2 tabular-nums relative z-10 tracking-tighter">R$ {stats.revenueToday.toFixed(2).replace('.', ',')}</p>
+                        <p className="text-2xl md:text-3xl font-black text-slate-800 mt-2 tabular-nums relative z-10 tracking-tighter">R$ {stats.revenueToday.toFixed(2).replace('.', ',')}</p>
 
                         <div className="mt-8 space-y-4 relative z-10">
                             <div className="flex justify-between items-center p-4 bg-slate-50/50 rounded-2xl border border-slate-50">

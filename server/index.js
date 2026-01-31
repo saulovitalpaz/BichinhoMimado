@@ -143,13 +143,30 @@ app.put('/api/services/:id', async (req, res) => {
 
 // === Medical ===
 app.get('/api/appointments', async (req, res) => {
-    const { date } = req.query;
+    const { date, start, end } = req.query;
     const where = {};
-    if (date) {
-        // Filter by date range if needed
+
+    // Exact Range Filter (Best for Timezones)
+    if (start && end) {
+        where.date = {
+            gte: new Date(start),
+            lte: new Date(end)
+        };
     }
+    // Fallback: Simple Date Filter
+    else if (date) {
+        const searchDate = new Date(date);
+        const nextDay = new Date(searchDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        where.date = {
+            gte: searchDate,
+            lt: nextDay
+        };
+    }
+
     const appointments = await prisma.appointment.findMany({
-        where,
+        where: { ...where, deletedAt: null }, // Ensure soft-deleted are excluded if not handled by Cascade yet
         include: { pet: { include: { tutor: true } } },
         orderBy: { date: 'asc' }
     });
@@ -251,9 +268,9 @@ app.post('/api/tutors', async (req, res) => {
 app.delete('/api/tutors/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await prisma.tutor.update({
-            where: { id: parseInt(id) },
-            data: { deletedAt: new Date() }
+        // HARD DELETE to trigger Cascade on Pets -> Appointments
+        await prisma.tutor.delete({
+            where: { id: parseInt(id) }
         });
         res.json({ success: true });
     } catch (e) {
@@ -303,9 +320,8 @@ app.post('/api/pets', async (req, res) => {
 app.delete('/api/pets/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await prisma.pet.update({
-            where: { id: parseInt(id) },
-            data: { deletedAt: new Date() }
+        await prisma.pet.delete({
+            where: { id: parseInt(id) }
         });
         res.json({ success: true });
     } catch (e) {
@@ -771,7 +787,7 @@ app.get('/api/products/:id/history', async (req, res) => {
 });
 
 app.post('/api/sales', async (req, res) => {
-    const { items, paymentMethod, tutorId, userId } = req.body;
+    const { items, paymentMethod, tutorId, userId, installments, taxAmount, discount } = req.body;
     // items: [{ productId, quantity, price, name }]
 
     try {
@@ -798,7 +814,11 @@ app.post('/api/sales', async (req, res) => {
                 dueDate: new Date(),
                 paidDate: new Date(),
                 status: 'PAID',
+                status: 'PAID',
                 paymentMethod,
+                installments: installments ? parseInt(installments) : 1,
+                taxAmount: taxAmount ? parseFloat(taxAmount) : 0,
+                netAmount: totalAmount - (taxAmount ? parseFloat(taxAmount) : 0),
                 category: 'Retail',
                 items: {
                     create: itemsWithCosts.map(item => ({

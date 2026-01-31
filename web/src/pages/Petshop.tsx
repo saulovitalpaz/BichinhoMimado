@@ -275,7 +275,7 @@ const Petshop = () => {
                                                 </button>
                                             ) : (
                                                 <Link
-                                                    to="/vendas"
+                                                    to="/finance"
                                                     state={{ appointmentId: appt.id }}
                                                     className="flex items-center space-x-2 px-3 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all text-[9px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-emerald-200"
                                                 >

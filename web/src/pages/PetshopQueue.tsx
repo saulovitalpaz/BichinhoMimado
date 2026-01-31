@@ -56,18 +56,63 @@ const PetshopQueue = () => {
         return map[status] || map['Aguardando'];
     };
 
+    // Modals & Professionals
+    const [showStartModal, setShowStartModal] = useState(false);
+    const [professionals, setProfessionals] = useState<any[]>([]);
+    const [pendingAction, setPendingAction] = useState<{ id: number, nextStatus: string } | null>(null);
+    const [selectedProId, setSelectedProId] = useState('');
+
+    const fetchProfessionals = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/professionals`);
+            if (res.ok) {
+                const data = await res.json();
+                setProfessionals(data.filter((p: any) => p.active));
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    useEffect(() => {
+        fetchProfessionals();
+    }, []);
+
     const advanceStatus = async (appointment: any) => {
-        const flow = ['Aguardando', 'Banho', 'Secagem', 'Tosa', 'Pronto'];
-        const idx = flow.indexOf(appointment.petshopStatus || 'Aguardando');
+        const flow = ['Aguardando', 'Banho', 'Secagem', 'Tosa', 'Finalizacao', 'Pronto'];
+        const currentStatus = appointment.petshopStatus || 'Aguardando';
+        const idx = flow.indexOf(currentStatus);
         const next = flow[idx + 1];
 
         if (!next) return;
 
+        // If starting service, ask for professional
+        if (currentStatus === 'Aguardando' && next === 'Banho') {
+            setPendingAction({ id: appointment.id, nextStatus: next });
+            setShowStartModal(true);
+            return;
+        }
+
+        updateStatus(appointment.id, next);
+    };
+
+    const confirmStartService = async () => {
+        if (!pendingAction || !selectedProId) return;
+        const proName = professionals.find(p => p.id.toString() === selectedProId)?.name;
+
+        updateStatus(pendingAction.id, pendingAction.nextStatus, proName);
+        setShowStartModal(false);
+        setPendingAction(null);
+        setSelectedProId('');
+    };
+
+    const updateStatus = async (id: number, nextStatus: string, proName?: string) => {
         try {
-            await fetch(`${API_BASE_URL}/api/appointments/${appointment.id}`, {
+            await fetch(`${API_BASE_URL}/api/appointments/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ petshopStatus: next })
+                body: JSON.stringify({
+                    petshopStatus: nextStatus,
+                    ...(proName && { groomer: proName, status: 'IN_PROGRESS' })
+                })
             });
             fetchAppointments();
         } catch (e) {
@@ -79,6 +124,16 @@ const PetshopQueue = () => {
         const start = new Date(dateString);
         const diff = Math.floor((currentTime.getTime() - start.getTime()) / 60000);
         return `${diff} min`;
+    };
+
+    const getPetDisplayName = (appt: any) => {
+        if (appt.pet?.name) return appt.pet.name;
+        return appt.notes?.match(/PROVISÓRIO:\s*(.*?)\s*\(Tutor:/)?.[1] || 'Pet Provisório';
+    };
+
+    const getTutorDisplayName = (appt: any) => {
+        if (appt.pet?.tutor?.name) return appt.pet.tutor.name;
+        return appt.notes?.match(/\(Tutor:\s*(.*?)\)/)?.[1] || '---';
     };
 
     return (
@@ -102,18 +157,21 @@ const PetshopQueue = () => {
             <div className="space-y-4">
                 {appointments.map(appt => {
                     const status = getStatusInfo(appt.petshopStatus || 'Aguardando');
+                    const petName = getPetDisplayName(appt);
+                    const tutorName = getTutorDisplayName(appt);
                     return (
                         <div key={appt.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-lg transition-all flex flex-col md:flex-row items-center gap-6 group">
                             {/* Time & Avatar */}
                             <div className="flex items-center gap-4 min-w-[200px]">
                                 <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-xl font-black text-slate-300">
-                                    {appt.pet?.name?.[0]}
+                                    {petName[0]}
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">{appt.pet?.name}</h4>
+                                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">{petName}</h4>
                                     <div className="flex items-center gap-1 mt-1 text-slate-400">
                                         <Clock className="w-3 h-3" />
                                         <span className="text-[10px] font-bold uppercase tracking-widest">{getElapsedTime(appt.createdAt)}</span>
+                                        <span className="ml-2 text-[10px] text-slate-300">({tutorName})</span>
                                     </div>
                                 </div>
                             </div>
@@ -170,6 +228,44 @@ const PetshopQueue = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modal Select Professional */}
+            {showStartModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowStartModal(false)} />
+                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+                        <header className="p-6 bg-slate-900 text-white text-center">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em]">Iniciar Atendimento</h3>
+                            <p className="text-[10px] text-slate-400 mt-1">Quem irá realizar o serviço?</p>
+                        </header>
+
+                        <div className="p-6 space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Profissional</label>
+                                <select
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                    value={selectedProId}
+                                    onChange={e => setSelectedProId(e.target.value)}
+                                >
+                                    <option value="">Selecione...</option>
+                                    {professionals.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <button
+                                onClick={confirmStartService}
+                                disabled={!selectedProId}
+                                className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all ${selectedProId ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-300 cursor-not-allowed'
+                                    }`}
+                            >
+                                Confirmar Início
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -19,14 +19,13 @@ import PetshopQueue from './pages/PetshopQueue';
 import AdminFinance from './pages/AdminFinance';
 import AdminFiscal from './pages/AdminFiscal';
 import AdminProfessionals from './pages/admin/AdminProfessionals';
-import AdminProfessionals from './pages/admin/AdminProfessionals';
 
 // Import New Modules
 import CalendarService from './modules/medical/CalendarService';
 import CashierModule from './modules/financial/CashierModule';
 
 // Protected Route Wrapper
-const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles?: string[] }) => {
+const ProtectedRoute = ({ children, roles }: { children: React.ReactElement, roles?: string[] }) => {
     const { user, loading } = useAuth();
 
     if (loading) return <div className="h-screen flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest text-xs">Carregando...</div>;

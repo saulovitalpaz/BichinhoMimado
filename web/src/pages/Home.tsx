@@ -10,11 +10,19 @@ import {
     ChevronRight,
     Search
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 
 const Home = () => {
     const { user } = useAuth();
     const [appointments, setAppointments] = useState<any[]>([]);
+    const [stats, setStats] = useState({
+        patients: 124,
+        appointments: 12,
+        unpaid: 4,
+        occupancy: '85%'
+    });
 
     useEffect(() => {
         fetchStats();
@@ -83,10 +91,10 @@ const Home = () => {
                                         </div>
                                         <div>
                                             <p className="text-[12px] font-black text-slate-800 leading-none">
-                                                {appt.pet?.name || (appt.notes?.includes('PROVISÓRIO') ? appt.notes.split(':')[1]?.split('(')[0]?.trim() : 'Pet Provisório')}
+                                                {appt.pet?.name || (appt.notes?.match(/PROVISÓRIO:\s*(.*?)\s*\(Tutor:/)?.[1] || 'Pet Provisório')}
                                             </p>
                                             <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
-                                                Tutor: {appt.pet?.tutor?.name || (appt.notes?.includes('Tutor:') ? appt.notes.split('Tutor:')[1]?.replace(')', '')?.trim() : '---')}
+                                                Tutor: {appt.pet?.tutor?.name || appt.tutor?.name || (appt.notes?.match(/\(Tutor:\s*(.*?)\)/)?.[1] || '---')}
                                             </p>
                                         </div>
                                     </div>

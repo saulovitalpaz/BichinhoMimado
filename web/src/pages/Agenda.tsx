@@ -26,8 +26,23 @@ const Agenda = () => {
 
     // New Appointment Form
     const [searchPet, setSearchPet] = useState('');
+    const [selectedPet, setSelectedPet] = useState<any>(null);
+    const [isProvisional, setIsProvisional] = useState(false);
     const [services, setServices] = useState<any[]>([]);
     const [petResults, setPetResults] = useState<any[]>([]);
+    const [form, setForm] = useState({
+        time: '09:00',
+        serviceId: '',
+        service: '',
+        price: 0,
+        type: 'Petshop',
+        tempPetName: '',
+        tempTutorName: '',
+        tempTutorId: '',
+        category: 'Petshop'
+    });
+
+    const hours = Array.from({ length: 13 }, (_, i) => `${(i + 8).toString().padStart(2, '0')}:00`);
     useEffect(() => {
         fetchAppointments();
         fetchServices();
@@ -208,17 +223,17 @@ const Agenda = () => {
         if (appt.pet?.name) return appt.pet.name;
         // Parse provisional
         if (appt.notes?.includes('PROVISÓRIO:')) {
-            const match = appt.notes.match(/PROVISÓRIO: (.*?) \(Tutor: (.*?)\)/);
+            const match = appt.notes.match(/PROVISÓRIO:\s*(.*?)\s*\(Tutor:/);
             if (match) return match[1];
         }
-        return 'Provisório';
+        return 'Pet Provisório';
     };
 
     const getTutorDisplayName = (appt: any) => {
         if (appt.pet?.tutor?.name) return appt.pet.tutor.name;
         if (appt.tutor?.name) return appt.tutor.name; // Direct relation if exists
-        if (appt.notes?.includes('Tutor:')) {
-            const match = appt.notes.match(/Tutor: (.*?)\)/);
+        if (appt.notes?.includes('(Tutor:')) {
+            const match = appt.notes.match(/\(Tutor:\s*(.*?)\)/);
             if (match) return match[1];
         }
         return '---';
@@ -351,7 +366,7 @@ const Agenda = () => {
                                 <Play className="w-20 h-20 text-white fill-current" />
                             </div>
                             <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Próximo Paciente</p>
-                            <h4 className="text-white font-black text-2xl mt-3 uppercase tracking-tighter">{nextPatient.pet?.name || 'Provisório'}</h4>
+                            <h4 className="text-white font-black text-2xl mt-3 uppercase tracking-tighter">{getPetDisplayName(nextPatient)}</h4>
                             <p className="text-indigo-200 text-[11px] font-bold uppercase tracking-tight mt-1 flex items-center">
                                 <User className="w-3 h-3 mr-2" /> {getTutorDisplayName(nextPatient)}
                             </p>

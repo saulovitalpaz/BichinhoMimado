@@ -146,16 +146,17 @@ const CashierModule = () => {
     );
 
     const openCheckout = (serviceItem: any) => {
+        const petName = serviceItem.pet?.name || serviceItem.notes?.match(/PROVISÓRIO:\s*(.*?)\s*\(Tutor:/)?.[1] || 'Pet Provisório';
         setCheckoutData({
             type: 'SERVICE',
             data: serviceItem,
-            tutor: serviceItem.pet.tutor,
+            tutor: serviceItem.pet?.tutor || (serviceItem.tutorId ? { id: serviceItem.tutorId, name: serviceItem.notes?.match(/\(Tutor:\s*(.*?)\)/)?.[1] || 'Tutor Provisório' } : { id: null, name: 'Consumidor Final' }),
             pet: serviceItem.pet
         });
         setCart([{
             type: 'SERVICE',
             id: `svc-${serviceItem.id}`,
-            name: `${serviceItem.service} - ${serviceItem.pet.name}`,
+            name: `${serviceItem.service} - ${petName}`,
             price: serviceItem.price || 0,
             originalId: serviceItem.id,
             qty: 1
@@ -273,22 +274,27 @@ const CashierModule = () => {
                     <>
                         {activeTab === 'SERVICES' && (
                             <div className="p-3 sm:p-5 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                {filteredServices.map(svc => (
-                                    <div key={svc.id} onClick={() => openCheckout(svc)} className="group bg-slate-50/50 hover:bg-white border border-slate-100 hover:border-indigo-100 p-6 rounded-3xl cursor-pointer transition-all hover:shadow-xl">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-fuchsia-500 shadow-sm">
-                                                <Scissors className="w-5 h-5" />
+                                {filteredServices.map(svc => {
+                                    const petName = svc.pet?.name || svc.notes?.match(/PROVISÓRIO:\s*(.*?)\s*\(Tutor:/)?.[1] || 'Pet Provisório';
+                                    const tutorName = svc.pet?.tutor?.name || svc.tutor?.name || svc.notes?.match(/\(Tutor:\s*(.*?)\)/)?.[1] || '---';
+
+                                    return (
+                                        <div key={svc.id} onClick={() => openCheckout(svc)} className="group bg-slate-50/50 hover:bg-white border border-slate-100 hover:border-indigo-100 p-6 rounded-3xl cursor-pointer transition-all hover:shadow-xl">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-fuchsia-500 shadow-sm">
+                                                    <Scissors className="w-5 h-5" />
+                                                </div>
+                                                <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">Aguardando</span>
                                             </div>
-                                            <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest">Aguardando</span>
+                                            <h4 className="font-black text-lg text-slate-800 uppercase tracking-tight">{petName}</h4>
+                                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1 mb-4">{svc.service} • {tutorName}</p>
+                                            <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                                                <span className="text-lg font-black text-indigo-600">R$ {svc.price?.toFixed(2)}</span>
+                                                <span className="text-[10px] font-black text-slate-300 group-hover:text-indigo-400 uppercase tracking-widest transition-colors">Cobrar &rarr;</span>
+                                            </div>
                                         </div>
-                                        <h4 className="font-black text-lg text-slate-800 uppercase tracking-tight">{svc.pet.name}</h4>
-                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1 mb-4">{svc.service} • {svc.pet.tutor.name}</p>
-                                        <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                                            <span className="text-lg font-black text-indigo-600">R$ {svc.price?.toFixed(2)}</span>
-                                            <span className="text-[10px] font-black text-slate-300 group-hover:text-indigo-400 uppercase tracking-widest transition-colors">Cobrar &rarr;</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {filteredServices.length === 0 && (
                                     <div className="col-span-full text-center py-20 text-slate-300 font-black uppercase tracking-widest text-xs">Nenhum serviço pendente</div>
                                 )}

@@ -29,6 +29,7 @@ interface Product {
     costPrice: number | null;
     salePrice: number;
     expiry: string | null;
+    imageUrl: string | null;
 }
 
 interface StockMovement {
@@ -61,7 +62,8 @@ const PetshopInventory = () => {
         minStock: 5,
         costPrice: 0,
         salePrice: 0,
-        expiry: ''
+        expiry: '',
+        imageUrl: ''
     });
 
     const categories = ['Todos', 'Alimento', 'Higiene', 'Farma', 'Acessório', 'Brinquedo', 'Geral'];
@@ -120,7 +122,8 @@ const PetshopInventory = () => {
             minStock: 5,
             costPrice: 0,
             salePrice: 0,
-            expiry: ''
+            expiry: '',
+            imageUrl: ''
         });
     };
 
@@ -135,7 +138,8 @@ const PetshopInventory = () => {
             minStock: product.minStock,
             costPrice: product.costPrice || 0,
             salePrice: product.salePrice,
-            expiry: product.expiry?.split('T')[0] || ''
+            expiry: product.expiry?.split('T')[0] || '',
+            imageUrl: product.imageUrl || ''
         });
         setShowModal(true);
     };
@@ -309,8 +313,12 @@ const PetshopInventory = () => {
                     <div key={product.id} className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm">
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300">
-                                    <Package className="w-5 h-5" />
+                                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 overflow-hidden relative">
+                                    {product.imageUrl ? (
+                                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Package className="w-5 h-5" />
+                                    )}
                                 </div>
                                 <div>
                                     <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight">{product.name}</p>
@@ -378,8 +386,12 @@ const PetshopInventory = () => {
                                 <tr key={product.id} className="hover:bg-slate-50/30 transition-colors group">
                                     <td className="px-8 py-6 text-left">
                                         <div className="flex items-center space-x-4">
-                                            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300">
-                                                <Package className="w-5 h-5" />
+                                            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 overflow-hidden relative">
+                                                {product.imageUrl ? (
+                                                    <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Package className="w-5 h-5" />
+                                                )}
                                             </div>
                                             <div>
                                                 <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight">{product.name}</p>
@@ -581,6 +593,82 @@ const PetshopInventory = () => {
                                     value={formData.expiry ? new Date(formData.expiry).toISOString().split('T')[0] : ''}
                                     onChange={e => setFormData({ ...formData, expiry: e.target.value })}
                                 />
+                            </div>
+
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Imagem do Produto</label>
+
+                                {/* URL Input */}
+                                <input
+                                    placeholder="Cole a URL da imagem..."
+                                    className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-600/30 transition-all"
+                                    value={formData.imageUrl}
+                                    onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
+                                />
+
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">OU</span>
+                                    <div className="flex-1 relative group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const formData = new FormData();
+                                                    formData.append('image', file);
+                                                    try {
+                                                        // Visual feedback
+                                                        const btn = document.getElementById('upload-btn-text');
+                                                        if (btn) btn.innerText = 'Enviando...';
+
+                                                        const res = await fetch(`${API_BASE_URL}/api/upload`, {
+                                                            method: 'POST',
+                                                            body: formData
+                                                        });
+                                                        if (res.ok) {
+                                                            const data = await res.json();
+                                                            setFormData(prev => ({ ...prev, imageUrl: data.url }));
+                                                        } else {
+                                                            alert('Erro ao enviar imagem');
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Upload Error:', error);
+                                                        alert('Erro ao enviar imagem');
+                                                    } finally {
+                                                        const btn = document.getElementById('upload-btn-text');
+                                                        if (btn) btn.innerText = 'Carregar do Dispositivo / Câmera';
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <div className="w-full px-6 py-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-2xl flex items-center justify-center gap-3 transition-colors cursor-pointer">
+                                            <div className="p-2 bg-indigo-200 text-indigo-700 rounded-full">
+                                                <Edit3 className="w-4 h-4" />
+                                            </div>
+                                            <span id="upload-btn-text" className="text-[11px] font-black text-indigo-600 uppercase tracking-widest">Carregar do Dispositivo / Câmera</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {formData.imageUrl && (
+                                    <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+                                        <img src={formData.imageUrl} alt="Preview" className="w-16 h-16 rounded-xl object-cover bg-white shadow-sm" />
+                                        <div>
+                                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Imagem Definida</p>
+                                            <p className="text-[9px] font-bold text-slate-400 mt-1 truncate max-w-[200px]">{formData.imageUrl}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                                            className="ml-auto p-2 bg-white text-red-500 rounded-xl shadow-sm hover:bg-red-50 transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
 

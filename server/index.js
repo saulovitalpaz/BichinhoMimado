@@ -1,5 +1,8 @@
 const express = require('express');
 const path = require('path'); // Added for static serving
+const fs = require('fs');
+const multer = require('multer');
+
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
@@ -48,6 +51,31 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Serve uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Configure Multer
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ storage: storage });
+
+app.post('/api/upload', upload.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    // Return the full URL
+    const fileUrl = `${process.env.API_BASE_URL || 'http://localhost:3001'}/uploads/${req.file.filename}`;
+    res.json({ url: fileUrl });
+});
 
 // === Health Check & Root ===
 app.get('/', (req, res) => {
@@ -581,8 +609,8 @@ app.get('/api/search', async (req, res) => {
             prisma.pet.findMany({
                 where: {
                     OR: [
-                        { name: { contains: query } },
-                        { tutor: { name: { contains: query } } }
+                        { name: { contains: query, mode: 'insensitive' } },
+                        { tutor: { name: { contains: query, mode: 'insensitive' } } }
                     ],
                     deletedAt: null
                 },
@@ -592,7 +620,7 @@ app.get('/api/search', async (req, res) => {
             prisma.tutor.findMany({
                 where: {
                     OR: [
-                        { name: { contains: query } },
+                        { name: { contains: query, mode: 'insensitive' } },
                         { cpf: { contains: query } }
                     ],
                     deletedAt: null
@@ -603,7 +631,7 @@ app.get('/api/search', async (req, res) => {
             prisma.bill.findMany({
                 where: {
                     OR: [
-                        { description: { contains: query } },
+                        { description: { contains: query, mode: 'insensitive' } },
                         // Only search ID if query is numeric to prevent DB casting errors
                         ...(!isNaN(parseInt(query)) ? [{ id: parseInt(query) }] : [])
                     ],
@@ -741,6 +769,7 @@ app.post('/api/products', async (req, res) => {
                 minStock: parseInt(minStock) || 5,
                 costPrice: parseFloat(costPrice) || 0,
                 salePrice: parseFloat(salePrice) || 0,
+                imageUrl: req.body.imageUrl || null,
                 expiry: expiry ? new Date(expiry) : null,
                 deletedAt: null,
                 stockMovements: {
@@ -763,7 +792,7 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry, userId, reason } = req.body;
+        const { name, description, sku, category, stock, minStock, costPrice, salePrice, expiry, userId, reason, imageUrl } = req.body;
 
         // 1. Get current product to check stock change
         const currentProduct = await prisma.product.findUnique({ where: { id: parseInt(id) } });
@@ -783,7 +812,8 @@ app.put('/api/products/:id', async (req, res) => {
             minStock: minStock !== undefined ? parseInt(minStock) : undefined,
             costPrice: costPrice !== undefined ? parseFloat(costPrice) : undefined,
             salePrice: salePrice !== undefined ? parseFloat(salePrice) : undefined,
-            expiry: expiry ? new Date(expiry) : undefined
+            expiry: expiry ? new Date(expiry) : undefined,
+            imageUrl
         };
 
         // 3. Update and potentially create movement
@@ -836,7 +866,7 @@ app.get('/api/products/:id/history', async (req, res) => {
 });
 
 app.post('/api/sales', async (req, res) => {
-    const { items, paymentMethod, tutorId, userId, installments, taxAmount, discount } = req.body;
+    const { items, paymentMethod, tutorId, userId, installments, taxAmount, discount, guestName, guestPhone } = req.body;
     // items: [{ productId, quantity, price, name }]
 
     try {
@@ -858,11 +888,12 @@ app.post('/api/sales', async (req, res) => {
         const bill = await prisma.bill.create({
             data: {
                 tutorId,
+                guestName, // Key for provisional sales
+                guestPhone,
                 description: 'Venda Petshop / PDV',
                 amount: totalAmount,
                 dueDate: new Date(),
                 paidDate: new Date(),
-                status: 'PAID',
                 status: 'PAID',
                 paymentMethod,
                 installments: installments ? parseInt(installments) : 1,
@@ -873,6 +904,8 @@ app.post('/api/sales', async (req, res) => {
                     create: itemsWithCosts.map(item => ({
                         category: 'PDV',
                         description: item.name,
+                        petName: item.petName,
+                        petSpecies: item.petSpecies,
                         amount: item.price,
                         costAmount: item.costAmount,
                         quantity: item.quantity,
@@ -1092,98 +1125,98 @@ app.post('/api/nfe/validate', async (req, res) => {
 });
 
 // === Goals API ===
-        app.get('/api/goals', async (req, res) => {
-            try {
-                const goals = await prisma.goal.findMany();
-                res.json(goals);
-            } catch (e) {
-                res.status(500).json({ error: 'Failed to fetch goals' });
-            }
+app.get('/api/goals', async (req, res) => {
+    try {
+        const goals = await prisma.goal.findMany();
+        res.json(goals);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch goals' });
+    }
+});
+
+app.put('/api/goals', async (req, res) => {
+    const { daily, weekly, monthly } = req.body;
+    try {
+        const updates = [];
+        if (daily !== undefined) {
+            updates.push(prisma.goal.upsert({
+                where: { type: 'DAILY' },
+                update: { value: parseFloat(daily) },
+                create: { type: 'DAILY', value: parseFloat(daily) }
+            }));
+        }
+        if (weekly !== undefined) {
+            updates.push(prisma.goal.upsert({
+                where: { type: 'WEEKLY' },
+                update: { value: parseFloat(weekly) },
+                create: { type: 'WEEKLY', value: parseFloat(weekly) }
+            }));
+        }
+        if (monthly !== undefined) {
+            updates.push(prisma.goal.upsert({
+                where: { type: 'MONTHLY' },
+                update: { value: parseFloat(monthly) },
+                create: { type: 'MONTHLY', value: parseFloat(monthly) }
+            }));
+        }
+        await Promise.all(updates);
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to update goals' });
+    }
+});
+
+// === Finance Stats API ===
+app.get('/api/finance/stats/period', async (req, res) => {
+    const { type } = req.query; // 'day', 'week', 'month'
+    try {
+        const now = new Date();
+        let startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+
+        if (type === 'week') {
+            const day = now.getDay();
+            const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+            startDate = new Date(now.setDate(diff));
+            startDate.setHours(0, 0, 0, 0);
+        } else if (type === 'month') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+
+        const sales = await prisma.bill.findMany({
+            where: {
+                category: 'Retail',
+                status: 'PAID',
+                createdAt: { gte: startDate },
+                deletedAt: null
+            },
+            include: { items: true }
         });
 
-        app.put('/api/goals', async (req, res) => {
-            const { daily, weekly, monthly } = req.body;
-            try {
-                const updates = [];
-                if (daily !== undefined) {
-                    updates.push(prisma.goal.upsert({
-                        where: { type: 'DAILY' },
-                        update: { value: parseFloat(daily) },
-                        create: { type: 'DAILY', value: parseFloat(daily) }
-                    }));
-                }
-                if (weekly !== undefined) {
-                    updates.push(prisma.goal.upsert({
-                        where: { type: 'WEEKLY' },
-                        update: { value: parseFloat(weekly) },
-                        create: { type: 'WEEKLY', value: parseFloat(weekly) }
-                    }));
-                }
-                if (monthly !== undefined) {
-                    updates.push(prisma.goal.upsert({
-                        where: { type: 'MONTHLY' },
-                        update: { value: parseFloat(monthly) },
-                        create: { type: 'MONTHLY', value: parseFloat(monthly) }
-                    }));
-                }
-                await Promise.all(updates);
-                res.json({ success: true });
-            } catch (e) {
-                console.error(e);
-                res.status(500).json({ error: 'Failed to update goals' });
-            }
+        const totalRevenue = sales.reduce((sum, s) => sum + (s.amount || 0), 0);
+        const totalProfit = sales.reduce((sum, s) => {
+            const saleCost = s.items?.reduce((acc, item) => acc + (item.costAmount || 0) * (item.quantity || 1), 0) || 0;
+            return sum + (s.amount - saleCost);
+        }, 0);
+
+        // Fetch target goal
+        const goalType = type === 'day' ? 'DAILY' : type === 'week' ? 'WEEKLY' : 'MONTHLY';
+        const goal = await prisma.goal.findUnique({ where: { type: goalType } });
+
+        res.json({
+            revenue: totalRevenue,
+            profit: totalProfit,
+            count: sales.length,
+            target: goal ? goal.value : 0,
+            percent: goal && goal.value > 0 ? (totalRevenue / goal.value) * 100 : 0
         });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to fetch period stats' });
+    }
+});
 
-        // === Finance Stats API ===
-        app.get('/api/finance/stats/period', async (req, res) => {
-            const { type } = req.query; // 'day', 'week', 'month'
-            try {
-                const now = new Date();
-                let startDate = new Date();
-                startDate.setHours(0, 0, 0, 0);
-
-                if (type === 'week') {
-                    const day = now.getDay();
-                    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-                    startDate = new Date(now.setDate(diff));
-                    startDate.setHours(0, 0, 0, 0);
-                } else if (type === 'month') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                }
-
-                const sales = await prisma.bill.findMany({
-                    where: {
-                        category: 'Retail',
-                        status: 'PAID',
-                        createdAt: { gte: startDate },
-                        deletedAt: null
-                    },
-                    include: { items: true }
-                });
-
-                const totalRevenue = sales.reduce((sum, s) => sum + (s.amount || 0), 0);
-                const totalProfit = sales.reduce((sum, s) => {
-                    const saleCost = s.items?.reduce((acc, item) => acc + (item.costAmount || 0) * (item.quantity || 1), 0) || 0;
-                    return sum + (s.amount - saleCost);
-                }, 0);
-
-                // Fetch target goal
-                const goalType = type === 'day' ? 'DAILY' : type === 'week' ? 'WEEKLY' : 'MONTHLY';
-                const goal = await prisma.goal.findUnique({ where: { type: goalType } });
-
-                res.json({
-                    revenue: totalRevenue,
-                    profit: totalProfit,
-                    count: sales.length,
-                    target: goal ? goal.value : 0,
-                    percent: goal && goal.value > 0 ? (totalRevenue / goal.value) * 100 : 0
-                });
-            } catch (e) {
-                console.error(e);
-                res.status(500).json({ error: 'Failed to fetch period stats' });
-            }
-        });
-
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`Server running on port ${PORT}`);
-        });
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+});

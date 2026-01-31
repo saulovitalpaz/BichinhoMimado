@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, User, Dog, CheckCircle, Search, Filter, Shield, ShieldOff, MoreHorizontal, ArrowUpRight, ArrowDownLeft, DollarSign, Plus, Trash2, ShoppingCart, Scissors, Package } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 
+import { API_BASE_URL } from '../../config';
+
+interface Product {
+    id: number;
+    name: string;
+    salePrice: number;
+    sku: string | null;
+    imageUrl?: string | null;
+}
+
 const CashierModule = () => {
     const [activeTab, setActiveTab] = useState<'SERVICES' | 'BILLS'>('SERVICES');
     const [bills, setBills] = useState<any[]>([]);
@@ -24,6 +34,9 @@ const CashierModule = () => {
 
     // Quick Register Modal
     const [showRegisterModal, setShowRegisterModal] = useState(false);
+    const [isGuestEditMode, setIsGuestEditMode] = useState(false);
+    const [guestForm, setGuestForm] = useState({ name: '', phone: '' });
+
     const [regForm, setRegForm] = useState({
         tutorName: '',
         tutorPhone: '',
@@ -156,7 +169,9 @@ const CashierModule = () => {
         setCart([{
             type: 'SERVICE',
             id: `svc-${serviceItem.id}`,
-            name: `${serviceItem.service} - ${petName}`,
+            name: serviceItem.service,
+            petName: petName,
+            petSpecies: serviceItem.pet?.species || 'Unknown',
             price: serviceItem.price || 0,
             originalId: serviceItem.id,
             qty: 1
@@ -175,7 +190,8 @@ const CashierModule = () => {
                 name: product.name,
                 price: product.salePrice,
                 originalId: product.id,
-                qty: 1
+                qty: 1,
+                imageUrl: product.imageUrl
             }];
         });
         setProductSearch('');
@@ -185,6 +201,11 @@ const CashierModule = () => {
         if (!checkoutData || !paymentMethod) return;
 
         try {
+            // Determine guest vs registered
+            const isGuest = checkoutData.tutor.id === null;
+            const finalGuestName = isGuest ? (guestForm.name || checkoutData.tutor.name) : null;
+            const finalGuestPhone = isGuest ? guestForm.phone : null;
+
             // Create Sale/Bill
             const res = await fetch(`${API_BASE_URL}/api/sales`, {
                 method: 'POST',
@@ -195,12 +216,16 @@ const CashierModule = () => {
                         serviceId: item.type === 'SERVICE' ? item.originalId : null,
                         quantity: item.qty,
                         price: item.price,
-                        name: item.name
+                        name: item.name,
+                        petName: item.petName || null,
+                        petSpecies: item.petSpecies || null
                     })),
                     paymentMethod,
                     installments: (paymentMethod === 'Credit') ? installments : 1,
                     taxAmount: (paymentMethod === 'Credit' || paymentMethod === 'Debit') ? (cart.reduce((access, item) => access + (item.price * item.qty), 0) * (taxRate / 100)).toFixed(2) : 0,
                     tutorId: checkoutData.tutor.id,
+                    guestName: finalGuestName,
+                    guestPhone: finalGuestPhone,
                     userId: 1 // TODO: Context User
                 })
             });
@@ -222,7 +247,9 @@ const CashierModule = () => {
     };
 
     const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-    const pendingTotal = bills.filter(b => b.status === 'PENDING').reduce((acc, b) => acc + b.amount, 0);
+    const pendingBillsTotal = bills.filter(b => b.status === 'PENDING').reduce((acc, b) => acc + b.amount, 0);
+    const pendingServicesTotal = pendingServices.reduce((acc, s) => acc + (s.price || 0), 0);
+    const totalReceivable = pendingBillsTotal + pendingServicesTotal;
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 relative">
@@ -257,8 +284,9 @@ const CashierModule = () => {
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white p-6 rounded-3xl border border-slate-50 shadow-sm">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A Receber (Faturas)</p>
-                    <h3 className="text-2xl font-black text-slate-800 mt-2">R$ {pendingTotal.toFixed(2)}</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A Receber Total</p>
+                    <h3 className="text-2xl font-black text-slate-800 mt-2">R$ {totalReceivable.toFixed(2)}</h3>
+                    <p className="text-[9px] text-slate-400 mt-1 font-bold">Faturas: R$ {pendingBillsTotal.toFixed(2)} | Serviços: R$ {pendingServicesTotal.toFixed(2)}</p>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-slate-50 shadow-sm">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serviços Pendentes</p>
@@ -345,12 +373,26 @@ const CashierModule = () => {
                                 {cart.map((item, idx) => (
                                     <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${item.type === 'SERVICE' ? 'bg-fuchsia-50 text-fuchsia-500' : 'bg-emerald-50 text-emerald-500'}`}>
-                                                {item.type === 'SERVICE' ? <Scissors className="w-4 h-4" /> : <Package className="w-4 h-4" />}
+                                            <div className="relative group/img cursor-pointer">
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden ${item.type === 'SERVICE' ? 'bg-fuchsia-50 text-fuchsia-500' : 'bg-emerald-50 text-emerald-500'}`}>
+                                                    {item.imageUrl ? (
+                                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        item.type === 'SERVICE' ? <Scissors className="w-4 h-4" /> : <Package className="w-4 h-4" />
+                                                    )}
+                                                </div>
+                                                {/* Hover Preview */}
+                                                {item.imageUrl && (
+                                                    <div className="fixed hidden group-hover/img:block z-[999] pointer-events-none fade-in zoom-in duration-200"
+                                                        style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+                                                        <img src={item.imageUrl} className="w-64 h-64 object-cover rounded-3xl shadow-2xl border-4 border-white" />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight">{item.name}</p>
-                                                <p className="text-[9px] font-bold text-slate-400">x{item.qty}</p>
+                                                {item.petName && <p className="text-[9px] font-bold text-slate-400 capitalize">{item.petName}</p>}
+                                                {!item.petName && <p className="text-[9px] font-bold text-slate-400">x{item.qty}</p>}
                                             </div>
                                         </div>
                                         <p className="text-[12px] font-black text-slate-800">R$ {(item.price * item.qty).toFixed(2)}</p>
@@ -382,8 +424,11 @@ const CashierModule = () => {
                                                     className="w-full text-left px-4 py-3 hover:bg-slate-50 text-[11px] font-bold text-slate-700 flex justify-between border-b border-slate-50 last:border-0 transition-colors"
                                                 >
                                                     <div className="flex flex-col">
-                                                        <span>{p.name}</span>
-                                                        {p.sku && <span className="text-[8px] text-slate-400 font-black">{p.sku}</span>}
+                                                        <div className="flex items-center gap-2">
+                                                            {p.imageUrl && <img src={p.imageUrl} className="w-6 h-6 rounded-md object-cover border border-slate-100" />}
+                                                            <span>{p.name}</span>
+                                                        </div>
+                                                        {p.sku && <span className="text-[8px] text-slate-400 font-black pl-8">{p.sku}</span>}
                                                     </div>
                                                     <span className="text-indigo-600">R$ {p.salePrice.toFixed(2)}</span>
                                                 </button>
@@ -407,15 +452,50 @@ const CashierModule = () => {
                                 <div className="bg-indigo-50 p-4 rounded-2xl mb-6 relative">
                                     <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Cliente</p>
                                     <div className="flex justify-between items-center">
-                                        <div>
-                                            <p className="text-sm font-black text-indigo-900">{checkoutData.tutor.name}</p>
-                                            <p className="text-[10px] text-indigo-500 font-bold">{checkoutData.tutor.cpf || ''}</p>
-                                        </div>
-                                        {checkoutData.type === 'QUICK_SALE' && (
-                                            <button onClick={() => setIsSearchingClient(!isSearchingClient)} className="p-1 hover:bg-white rounded-lg transition-colors">
-                                                <Search className="w-4 h-4 text-indigo-400" />
-                                            </button>
+                                        {isGuestEditMode ? (
+                                            <div className="space-y-2 w-full mr-2">
+                                                <input
+                                                    placeholder="Nome do Cliente (Provisório)"
+                                                    className="w-full px-2 py-1 bg-white md:text-sm text-xs font-bold border border-indigo-200 rounded-lg outline-none focus:border-indigo-500"
+                                                    value={guestForm.name}
+                                                    onChange={e => setGuestForm({ ...guestForm, name: e.target.value })}
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    placeholder="Telefone/Contato"
+                                                    className="w-full px-2 py-1 bg-white md:text-sm text-xs font-bold border border-indigo-200 rounded-lg outline-none focus:border-indigo-500"
+                                                    value={guestForm.phone}
+                                                    onChange={e => setGuestForm({ ...guestForm, phone: e.target.value })}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <p className="text-sm font-black text-indigo-900">{checkoutData.tutor.id ? checkoutData.tutor.name : (guestForm.name || checkoutData.tutor.name)}</p>
+                                                <p className="text-[10px] text-indigo-500 font-bold">{checkoutData.tutor.cpf || guestForm.phone || 'Sem cadastro'}</p>
+                                            </div>
                                         )}
+
+                                        <div className="flex gap-1">
+                                            {checkoutData.tutor.id === null && (
+                                                <button onClick={() => {
+                                                    if (isGuestEditMode) {
+                                                        // Save (just allow exit, state is already updated)
+                                                        setIsGuestEditMode(false);
+                                                    } else {
+                                                        setGuestForm({ name: checkoutData.tutor.name === 'Cliente Avulso' ? '' : checkoutData.tutor.name, phone: '' });
+                                                        setIsGuestEditMode(true);
+                                                    }
+                                                }} className="p-1 hover:bg-white rounded-lg transition-colors text-indigo-400">
+                                                    {isGuestEditMode ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Scissors className="w-4 h-4 rotate-90" />}
+                                                    {/* Using Scissors just as an edit icon placeholder or Pencil if available */}
+                                                </button>
+                                            )}
+                                            {checkoutData.type === 'QUICK_SALE' && !isGuestEditMode && (
+                                                <button onClick={() => setIsSearchingClient(!isSearchingClient)} className="p-1 hover:bg-white rounded-lg transition-colors">
+                                                    <Search className="w-4 h-4 text-indigo-400" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {checkoutData.type === 'QUICK_SALE' && isSearchingClient && (

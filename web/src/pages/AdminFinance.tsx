@@ -352,6 +352,7 @@ const AdminFinance = () => {
                                 <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">ID / Data</th>
                                 <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente / Tutor</th>
                                 <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Itens / Serviço</th>
+                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pet / Espécie</th>
                                 <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pagamento</th>
                                 <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Líquido (Lucro)</th>
                                 <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Valor Total</th>
@@ -390,6 +391,12 @@ const AdminFinance = () => {
                                             </div>
                                         </td>
                                         <td className="p-6">
+                                            <div className="max-w-[150px]">
+                                                <div className="font-bold text-xs text-slate-700 capitalize">{sale.items?.[0]?.petName || '---'}</div>
+                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{sale.items?.[0]?.petSpecies || ''}</div>
+                                            </div>
+                                        </td>
+                                        <td className="p-6">
                                             <div className="flex items-center space-x-2">
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                                                     {sale.paymentMethod || 'Outro'}
@@ -419,7 +426,7 @@ const AdminFinance = () => {
                             })}
                             {sales.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="p-12 text-center text-slate-300">
+                                    <td colSpan={8} className="p-12 text-center text-slate-300">
                                         <div className="flex flex-col items-center gap-2">
                                             <Search className="w-8 h-8 opacity-20" />
                                             <span className="text-xs font-black uppercase tracking-widest">Nenhuma venda registrada</span>

@@ -167,6 +167,7 @@ model Product {
   costPrice     Float?
   salePrice     Float
   expiry        DateTime?
+  imageUrl      String?        // Added for visual identification
   
   // Fiscal Data
   ncm           String?        // Nomenclatura Comum do Mercosul
@@ -206,6 +207,9 @@ model Bill {
   installments  Int           @default(1)
   taxAmount     Float?        @default(0.0)
   netAmount     Float?        // amount - taxAmount
+  
+  guestName     String?       // For quick sales/provisional keys
+  guestPhone    String?       // For future analytics
   
   tutorId       Int?
   tutor         Tutor?        @relation(fields: [tutorId], references: [id])
@@ -262,6 +266,10 @@ model InvoiceItem {
   bill        Bill            @relation(fields: [billId], references: [id])
   category    InvoiceCategory
   description String
+  
+  petName     String?         // Snapshot of pet name for analytics
+  petSpecies  String?         // Snapshot of species
+  
   amount      Float
   costAmount  Float?          // Snapshot of cost at time of sale
   quantity    Int             @default(1)

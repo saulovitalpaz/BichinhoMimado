@@ -22,6 +22,16 @@ const CashierModule = () => {
     const [taxRate, setTaxRate] = useState(0); // Percentage
     const [isSearchingClient, setIsSearchingClient] = useState(false);
 
+    // Quick Register Modal
+    const [showRegisterModal, setShowRegisterModal] = useState(false);
+    const [regForm, setRegForm] = useState({
+        tutorName: '',
+        tutorPhone: '',
+        tutorCpf: '',
+        petName: '',
+        petSpecies: 'Cachorro'
+    });
+
     useEffect(() => {
         fetchData();
         fetchProducts();
@@ -66,6 +76,55 @@ const CashierModule = () => {
                 setTutorResults(data.filter((r: any) => r.type === 'tutor' || r.type === 'pet'));
             }
         } catch (e) { console.error(e); }
+    };
+
+    const handleQuickRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            // 1. Create Tutor
+            const tutorRes = await fetch(`${API_BASE_URL}/api/tutors`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: regForm.tutorName,
+                    phone: regForm.tutorPhone,
+                    cpf: regForm.tutorCpf,
+                    notes: 'Cadastrado no PDV'
+                })
+            });
+
+            if (!tutorRes.ok) throw new Error('Falha ao criar tutor');
+            const tutor = await tutorRes.json();
+
+            // 2. Create Pet (if provided, which is likely needed for linkage)
+            if (regForm.petName) {
+                const petRes = await fetch(`${API_BASE_URL}/api/pets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: regForm.petName,
+                        species: regForm.petSpecies,
+                        tutorId: tutor.id,
+                        notes: 'Cadastrado no PDV'
+                    })
+                });
+                if (!petRes.ok) throw new Error('Falha ao criar pet');
+            }
+
+            // 3. Select and Close
+            setCheckoutData({
+                ...checkoutData,
+                tutor: { id: tutor.id, name: tutor.name, cpf: tutor.cpf }
+            });
+            setShowRegisterModal(false);
+            setRegForm({ tutorName: '', tutorPhone: '', tutorCpf: '', petName: '', petSpecies: 'Cachorro' });
+            setIsSearchingClient(false);
+            alert('Cliente cadastrado com sucesso!');
+
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao realizar cadastro rápido.');
+        }
     };
 
     const startNewSale = () => {
@@ -357,10 +416,16 @@ const CashierModule = () => {
                                         <div className="absolute top-full left-0 right-0 mt-2 z-30">
                                             <input
                                                 autoFocus
-                                                placeholder="Trocar cliente..."
+                                                placeholder="Nome do cliente/pet ou..."
                                                 className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-xl text-[12px] font-bold outline-none focus:border-indigo-500"
                                                 onChange={e => handleSearchTutor(e.target.value)}
                                             />
+                                            <button
+                                                onClick={() => setShowRegisterModal(true)}
+                                                className="w-full mt-2 py-3 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" /> Cadastrar Novo Cliente
+                                            </button>
                                             {tutorResults.length > 0 && (
                                                 <div className="bg-white border border-slate-100 rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto w-full">
                                                     {tutorResults.map(r => (
@@ -452,8 +517,62 @@ const CashierModule = () => {
                         </div>
                     </div>
                 </div>
-            )
-            }
+            )}
+
+            {/* Quick Register Modal */}
+            {showRegisterModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowRegisterModal(false)} />
+                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 z-50">
+                        <header className="p-6 bg-slate-900 text-white text-center">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em]">Novo Cadastro</h3>
+                            <p className="text-[10px] text-slate-400 mt-1">Vincular venda à novo cliente</p>
+                        </header>
+
+                        <form onSubmit={handleQuickRegister} className="p-6 space-y-4">
+                            <div className="space-y-4">
+                                <input
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500"
+                                    placeholder="Nome do Tutor (Obrigatório)"
+                                    required
+                                    value={regForm.tutorName}
+                                    onChange={e => setRegForm({ ...regForm, tutorName: e.target.value })}
+                                />
+                                <input
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500"
+                                    placeholder="CPF (Opcional)"
+                                    value={regForm.tutorCpf}
+                                    onChange={e => setRegForm({ ...regForm, tutorCpf: e.target.value })}
+                                />
+                                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-50 space-y-3">
+                                    <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">Dados do Pet (Opcional)</p>
+                                    <input
+                                        className="w-full px-4 py-3 bg-white border border-indigo-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500"
+                                        placeholder="Nome do Pet"
+                                        value={regForm.petName}
+                                        onChange={e => setRegForm({ ...regForm, petName: e.target.value })}
+                                    />
+                                    <select
+                                        className="w-full px-4 py-3 bg-white border border-indigo-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500"
+                                        value={regForm.petSpecies}
+                                        onChange={e => setRegForm({ ...regForm, petSpecies: e.target.value })}
+                                    >
+                                        <option value="Cachorro">Cachorro</option>
+                                        <option value="Gato">Gato</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="w-full py-4 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95"
+                            >
+                                Salvar & Vincular
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

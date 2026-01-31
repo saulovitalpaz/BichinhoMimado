@@ -26,42 +26,15 @@ const Agenda = () => {
 
     // New Appointment Form
     const [searchPet, setSearchPet] = useState('');
-    const [petResults, setPetResults] = useState<any[]>([]);
     const [services, setServices] = useState<any[]>([]);
-    const [professionals, setProfessionals] = useState<any[]>(['Dr. Saulo', 'Anny', 'Gabriel']); // Mock for now, replace with API if User table ready
-    const [selectedPet, setSelectedPet] = useState<any | null>(null);
-    const [isProvisional, setIsProvisional] = useState(false);
-    const [form, setForm] = useState({
-        type: 'Petshop',
-        serviceId: '',
-        service: '',
-        veterinarian: '',
-        time: '09:00',
-        price: 0,
-        tempPetName: '',
-        tempTutorName: '',
-        tempTutorId: ''
-    });
-
-    const hours = Array.from({ length: 13 }, (_, i) => `${i + 8}:00`.padStart(5, '0')); // 08:00 to 20:00
-
+    const [petResults, setPetResults] = useState<any[]>([]);
     useEffect(() => {
         fetchAppointments();
         fetchServices();
-        fetchProfessionals();
+        // Professionals no longer fetched here
     }, [currentDate]);
 
-    const fetchProfessionals = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/professionals`);
-            if (res.ok) {
-                const data = await res.json();
-                setProfessionals(data.filter((p: any) => p.active).map((p: any) => p.name));
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    // Removed fetchProfessionals since it's no longer used in this modal
 
     const fetchServices = async () => {
         try {
@@ -155,7 +128,7 @@ const Agenda = () => {
                 type: form.type,
                 service: form.service,
                 veterinarianId: 1, // Keep mock ID for now or fetch from User table
-                groomer: form.veterinarian,
+                groomer: null, // Removed form.veterinarian, will be set at start of service
                 petshopStatus: 'Aguardando',
                 status: 'SCHEDULED',
                 price: form.price,
@@ -243,12 +216,24 @@ const Agenda = () => {
 
     const getTutorDisplayName = (appt: any) => {
         if (appt.pet?.tutor?.name) return appt.pet.tutor.name;
-        if (appt.tutor?.name) return appt.tutor.name;
+        if (appt.tutor?.name) return appt.tutor.name; // Direct relation if exists
         if (appt.notes?.includes('Tutor:')) {
             const match = appt.notes.match(/Tutor: (.*?)\)/);
             if (match) return match[1];
         }
         return '---';
+    };
+
+    const translateStatus = (status: string) => {
+        const map: any = {
+            'SCHEDULED': 'Agendado',
+            'CHECKED_IN': 'Chegou',
+            'IN_PROGRESS': 'Em Atend.',
+            'COMPLETED': 'Finalizado',
+            'CANCELED': 'Cancelado',
+            'WAITING': 'Aguardando'
+        };
+        return map[status] || status;
     };
 
     // Calculate Stats
@@ -340,7 +325,7 @@ const Agenda = () => {
                                                                     Iniciar
                                                                 </button>
                                                             )}
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{appt.status}</span>
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{translateStatus(appt.status)}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -358,21 +343,7 @@ const Agenda = () => {
 
                 {/* Stats Sidebar (Last on Mobile) */}
                 <aside className="lg:col-span-3 space-y-6 order-2 lg:order-1">
-                    <div className="bg-white p-6 rounded-3xl border border-slate-50 shadow-sm">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-50 pb-4">Resumo do Dia</h3>
-                        <div className="space-y-4">
-                            {[
-                                { label: 'Confirmados', val: confirmed, color: 'emerald' },
-                                { label: 'Aguardando', val: waiting, color: 'amber' },
-                                { label: 'Total', val: appointments.length, color: 'indigo' }
-                            ].map((stat, i) => (
-                                <div key={i} className={`p-4 rounded-2xl bg-${stat.color}-50/50 border border-${stat.color}-100 flex justify-between items-center`}>
-                                    <span className={`text-[9px] font-black text-${stat.color}-800 uppercase tracking-widest`}>{stat.label}</span>
-                                    <span className={`text-xl font-black text-${stat.color}-900 tabular-nums`}>{stat.val}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    {/* Resumo do dia removed as per request */}
 
                     {nextPatient ? (
                         <div className="bg-slate-900 p-6 rounded-3xl shadow-2xl relative overflow-hidden group border border-slate-800">
@@ -381,7 +352,10 @@ const Agenda = () => {
                             </div>
                             <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Próximo Paciente</p>
                             <h4 className="text-white font-black text-2xl mt-3 uppercase tracking-tighter">{nextPatient.pet?.name || 'Provisório'}</h4>
-                            <p className="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-widest">
+                            <p className="text-indigo-200 text-[11px] font-bold uppercase tracking-tight mt-1 flex items-center">
+                                <User className="w-3 h-3 mr-2" /> {getTutorDisplayName(nextPatient)}
+                            </p>
+                            <p className="text-slate-400 text-[10px] mt-4 font-bold uppercase tracking-widest border-t border-slate-700/50 pt-3">
                                 {nextPatient.service} • {new Date(nextPatient.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                             <button
@@ -538,17 +512,7 @@ const Agenda = () => {
                                 </select>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Profissional</label>
-                                <select
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-indigo-200 transition-all"
-                                    value={form.veterinarian}
-                                    onChange={e => setForm({ ...form, veterinarian: e.target.value })}
-                                >
-                                    <option value="">Selecione...</option>
-                                    {professionals.map(p => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                            </div>
+                            {/* Professional Select Removed */}
 
                             <button
                                 type="submit"

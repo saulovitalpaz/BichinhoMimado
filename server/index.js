@@ -105,7 +105,7 @@ app.post('/api/login', async (req, res) => {
 // === Services (New) ===
 app.get('/api/services', async (req, res) => {
     try {
-        const services = await prisma.service.findMany();
+        const services = await prisma.service.findMany({ where: { deletedAt: null } });
         res.json(services);
     } catch (e) {
         // If Service table doesn't exist yet, return mock or empty
@@ -138,6 +138,55 @@ app.put('/api/services/:id', async (req, res) => {
         res.json(service);
     } catch (e) {
         res.status(500).json({ error: 'Failed to update service' });
+    }
+});
+
+// === Professionals ===
+app.get('/api/professionals', async (req, res) => {
+    try {
+        const pros = await prisma.professional.findMany({ where: { deletedAt: null } });
+        res.json(pros);
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+app.post('/api/professionals', async (req, res) => {
+    try {
+        const { name, role, active } = req.body;
+        const pro = await prisma.professional.create({
+            data: { name, role, active: active !== undefined ? active : true }
+        });
+        res.json(pro);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to create professional' });
+    }
+});
+
+app.put('/api/professionals/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, role, active } = req.body;
+        const pro = await prisma.professional.update({
+            where: { id: parseInt(id) },
+            data: { name, role, active }
+        });
+        res.json(pro);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to update professional' });
+    }
+});
+
+app.delete('/api/professionals/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.professional.update({
+            where: { id: parseInt(id) },
+            data: { deletedAt: new Date() }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete professional' });
     }
 });
 

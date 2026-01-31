@@ -126,8 +126,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         if (user.role === 'admin_business' || user.role === 'admin_vet') return items;
 
         const roleRestrictions: Record<string, string[]> = {
-            VETERINARIAN: ['/finance', '/petshop'],
-            RECEPTIONIST: ['/internation', '/estoque', '/admin/finance', '/admin/fiscal', '/admin/services'],
+            vet: ['/finance', '/petshop'],
+            receptionist: ['/internation', '/estoque', '/admin/finance', '/admin/fiscal', '/admin/services'],
         };
 
         const restricted = roleRestrictions[user.role as keyof typeof roleRestrictions] || [];

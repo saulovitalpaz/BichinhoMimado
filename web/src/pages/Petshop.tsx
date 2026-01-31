@@ -42,6 +42,12 @@ const Petshop = () => {
     const [groomer, setGroomer] = useState('');
     const [status, setStatus] = useState('Aguardando');
 
+    // Start Service Modal
+    const [showStartModal, setShowStartModal] = useState(false);
+    const [professionals, setProfessionals] = useState<any[]>([]);
+    const [pendingAction, setPendingAction] = useState<{ id: number, nextStatus: string } | null>(null);
+    const [selectedProId, setSelectedProId] = useState('');
+
     const columns = [
         { id: 'Aguardando', label: 'Aguardando', color: 'bg-slate-100 text-slate-500', progress: 0 },
         { id: 'Banho', label: 'Em Banho', color: 'bg-indigo-50 text-indigo-600', progress: 25 },
@@ -77,7 +83,18 @@ const Petshop = () => {
     useEffect(() => {
         fetchAppointments();
         fetchServices();
+        fetchProfessionals();
     }, []);
+
+    const fetchProfessionals = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/professionals`);
+            if (res.ok) {
+                const data = await res.json();
+                setProfessionals(data.filter((p: any) => p.active));
+            }
+        } catch (e) { console.error(e); }
+    };
 
     const advanceStatus = async (appointment: any) => {
         const currentStatus = appointment.petshopStatus || 'Aguardando';
@@ -85,7 +102,40 @@ const Petshop = () => {
         const next = columns[idx + 1]?.id;
 
         if (!next) return;
+        if (!next) return;
+
+        // If starting service (Aguardando -> Banho), ask for professional
+        if (currentStatus === 'Aguardando' && next === 'Banho') {
+            setPendingAction({ id: appointment.id, nextStatus: next });
+            setShowStartModal(true);
+            return;
+        }
+
         updateAppointmentStatus(appointment.id, next);
+    };
+
+    const confirmStartService = async () => {
+        if (!pendingAction || !selectedProId) return;
+
+        const proName = professionals.find(p => p.id.toString() === selectedProId)?.name;
+
+        try {
+            await fetch(`${API_BASE_URL}/api/appointments/${pendingAction.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    petshopStatus: pendingAction.nextStatus,
+                    status: 'IN_PROGRESS',
+                    groomer: proName // Save name for now to match schema
+                })
+            });
+            setShowStartModal(false);
+            setPendingAction(null);
+            setSelectedProId('');
+            fetchAppointments();
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const updateAppointmentStatus = async (id: number, newStatus: string) => {
@@ -497,6 +547,44 @@ const Petshop = () => {
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Salvar Alterações</span>
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Select Professional (Start Service) */}
+            {showStartModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowStartModal(false)} />
+                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+                        <header className="p-6 bg-slate-900 text-white text-center">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em]">Iniciar Atendimento</h3>
+                            <p className="text-[10px] text-slate-400 mt-1">Quem irá realizar o serviço?</p>
+                        </header>
+
+                        <div className="p-6 space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Profissional</label>
+                                <select
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                    value={selectedProId}
+                                    onChange={e => setSelectedProId(e.target.value)}
+                                >
+                                    <option value="">Selecione...</option>
+                                    {professionals.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <button
+                                onClick={confirmStartService}
+                                disabled={!selectedProId}
+                                className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all ${selectedProId ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-300 cursor-not-allowed'
+                                    }`}
+                            >
+                                Confirmar Início
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
